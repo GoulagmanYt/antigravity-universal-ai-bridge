@@ -323,9 +323,7 @@
         '[class*="reasoning"]'
       ],
       responseSelectors: [
-        '[data-testid*="conversation-turn"]:has(button[data-testid="copy-turn-action-button"])',
-        '[data-testid*="conversation-turn"]:has(button[data-testid*="read-aloud"])',
-        '[data-testid*="conversation-turn"]:has(button[data-testid*="thumbs"])',
+        '.markdown',
         '[data-message-author-role="assistant"] .markdown',
         '[data-message-author-role="assistant"]',
         '[data-testid="assistant-message"] .markdown',
@@ -334,8 +332,7 @@
         '.agent-turn',
         'article [data-message-author-role="assistant"] .markdown',
         'div[data-message-author-role="assistant"] .markdown',
-        'div[data-message-author-role="assistant"]',
-        '.markdown.prose'
+        'div[data-message-author-role="assistant"]'
       ],
       fileInputSelectors: [
         'input[type="file"][multiple]',
@@ -379,7 +376,6 @@
         '.group.relative.inline-block svg.animate-spin'
       ],
       artifactCleanupSelectors: [
-        '.flex.items-center.justify-between',
         'button[aria-label*="Copy" i]',
         'button[aria-label*="Copier" i]'
       ]
@@ -735,10 +731,21 @@
       if (actionBtns.length > 0) {
         const foundTurns = [];
         for (const btn of actionBtns) {
-          const turn =
-            (typeof btn.closest === 'function' &&
-              btn.closest('[data-testid*="conversation-turn"], article, [class*="agent-turn"]')) ||
-            btn.parentElement?.parentElement;
+          let cur = btn.parentElement;
+          let turn = null;
+          for (let d = 0; d < 8 && cur && cur.tagName !== 'MAIN' && cur.tagName !== 'BODY'; d++) {
+            if (cur.querySelector && cur.querySelector('.markdown, pre, code')) {
+              turn = cur;
+              break;
+            }
+            if ((cur.innerText || cur.textContent || '').trim().length > 20) {
+              turn = cur;
+              if (cur.getAttribute('data-testid')?.includes('turn') || cur.className?.includes('turn')) {
+                break;
+              }
+            }
+            cur = cur.parentElement;
+          }
           if (turn && !foundTurns.includes(turn)) {
             const hasUserRole = turn.querySelector && turn.querySelector('[data-message-author-role="user"], [data-testid="user-message"]');
             if (!hasUserRole) {
