@@ -481,7 +481,7 @@ async function handleConsultRequest(args) {
         const reply = await callBrowserTab("prompt", {
             prompt: promptText,
             attachments
-        }, 300000);
+        }, 660000);
         const replyText = typeof reply === "string" ? reply : (reply.reply || JSON.stringify(reply));
         return { content: [{ type: "text", text: replyText }] };
     } catch (err) {

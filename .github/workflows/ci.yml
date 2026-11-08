@@ -2,7 +2,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, "feat/**"]
 permissions:
   contents: read
 jobs:
@@ -15,5 +15,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run check
+      - run: npm test
+      - run: node --test test/comparison.test.mjs
       - run: npm run audit

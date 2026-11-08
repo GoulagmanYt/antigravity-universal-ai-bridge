@@ -380,8 +380,12 @@ async function uploadAttachmentsToDOM(editor, rawAttachments) {
 
     const hasAttachmentChips = () => {
         if (!provider.attachmentChip) return false;
-        return findElementDeep(provider.attachmentChip) !== null ||
-               document.querySelectorAll(provider.attachmentChip).length > 0;
+        const chips = Array.from(document.querySelectorAll(provider.attachmentChip));
+        if (chips.length > 0) {
+            const isUploading = chips.some(c => c.querySelector('[role="progressbar"], .animate-spin, svg[class*="loading"]'));
+            return !isUploading;
+        }
+        return findElementDeep(provider.attachmentChip) !== null;
     };
 
     console.log(`[Bridge] Attaching ${attachments.length} file(s) to ${provider.name}...`);
@@ -511,32 +515,52 @@ function fillInputBox(editor, text) {
     }
 
     // Modern ProseMirror / rich-text editors (ChatGPT, Claude, Gemini)
-    if (editor.classList.contains('ProseMirror') || (currentHost && (currentHost.includes('chatgpt') || currentHost.includes('claude')))) {
-        const paragraphs = text.split('\n').map(l => `<p>${l || '<br>'}</p>`).join('');
-        editor.innerHTML = paragraphs;
-        editor.dispatchEvent(new InputEvent('input', {
-            bubbles: true,
-            cancelable: true,
-            composed: true,
-            inputType: 'insertText',
-            data: text
-        }));
-    } else {
-        document.execCommand('selectAll', false, null);
-        const inserted = document.execCommand('insertText', false, text);
-        if (!inserted || editor.innerText.trim() === '') {
-            editor.innerText = text;
-            editor.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: text }));
+    // Vector 1: Native editing insertion via execCommand
+    document.execCommand('selectAll', false, null);
+    let inserted = false;
+    try {
+        inserted = document.execCommand('insertText', false, text);
+    } catch (e) {}
+
+    // Vector 2: Synthetic ClipboardEvent('paste') with DataTransfer
+    if (!inserted || !editor.innerText || editor.innerText.trim() === '') {
+        try {
+            const dt = new DataTransfer();
+            dt.setData('text/plain', text);
+            const pasteEvent = new ClipboardEvent('paste', {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+                clipboardData: dt
+            });
+            editor.dispatchEvent(pasteEvent);
+        } catch (e) {}
+    }
+
+    // Vector 3: Safe text node paragraph construction (never unescaped raw innerHTML)
+    if (!editor.innerText || editor.innerText.trim() === '') {
+        editor.replaceChildren();
+        const lines = text.split('\n');
+        for (const line of lines) {
+            const p = document.createElement('p');
+            if (line.length > 0) {
+                p.textContent = line;
+            } else {
+                p.appendChild(document.createElement('br'));
+            }
+            editor.appendChild(p);
         }
     }
 
+    editor.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        inputType: 'insertText',
+        data: text
+    }));
     editor.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     editor.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-
-    if (!editor.innerText || editor.innerText.trim() === '') {
-        editor.textContent = text;
-        editor.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: text }));
-    }
 }
 
 function findAssistantResponses() {
@@ -623,19 +647,18 @@ async function askWebProvider(text, attachments = []) {
     if (attachments && attachments.length > 0) {
         const uploadResult = await uploadAttachmentsToDOM(editor, attachments);
         if (!uploadResult.uploaded) {
-            console.warn(`[Bridge] Native file upload did not succeed (${uploadResult.error}), falling back to inline prompt text.`);
-            const inlineFallback = attachments.map(a => `\n--- FILE: ${a.originalPath || a.name} ---\n${a.content}\n`).join("\n");
-            finalPromptText = `${text}\n\n=== FALLBACK INLINE FILES (DOM ATTACHMENT FAILED) ===\n${inlineFallback}`;
-        } else {
-            console.log(`[Bridge] Successfully attached ${uploadResult.count} file(s) natively via ${uploadResult.method}.`);
+            console.error(`[Bridge] Native file upload failed: ${uploadResult.error}`);
+            statusLabel.innerText = `🔴 Upload failed: ${uploadResult.error}`;
+            return `Error: Native file upload failed on ${provider.name} (${uploadResult.error}). File was not attached to prevent browser freeze caused by massive DOM injection.`;
         }
+        console.log(`[Bridge] Successfully attached ${uploadResult.count} file(s) natively via ${uploadResult.method}.`);
     }
 
     // 2. Fill the concise text prompt into the input box
     fillInputBox(editor, finalPromptText);
 
-    // 3. Wait up to 15s for file upload processing + send button activation (OpenAI/Gemini server upload progress)
-    const maxChecks = attachments.length > 0 ? 60 : 16;
+    // 3. Wait up to 20s for file upload processing + send button activation (OpenAI/Gemini server upload progress)
+    const maxChecks = attachments.length > 0 ? 80 : 20;
     let sendBtn = null;
     for (let i = 0; i < maxChecks; i++) {
         await new Promise(r => setTimeout(r, 250));
@@ -646,7 +669,10 @@ async function askWebProvider(text, attachments = []) {
                   document.querySelector('button[data-testid="send-button"]') ||
                   document.querySelector('.send-button-container button');
 
-        if (sendBtn && !sendBtn.disabled && sendBtn.getAttribute('aria-disabled') !== 'true' && !sendBtn.className.includes('opacity-50')) {
+        const isDisabled = !sendBtn || sendBtn.disabled || sendBtn.getAttribute('aria-disabled') === 'true' || sendBtn.className.includes('opacity-50');
+        const hasActiveSpinner = document.querySelector('[role="progressbar"], .animate-spin, svg[class*="loading"]') !== null;
+
+        if (sendBtn && !isDisabled && !hasActiveSpinner) {
             break;
         }
     }
@@ -662,7 +688,7 @@ async function askWebProvider(text, attachments = []) {
         let lastText = "";
         let stableCount = 0;
         let totalSeconds = 0;
-        const START_TIMEOUT_SECONDS = attachments.length > 0 ? 90 : 45;
+        const START_TIMEOUT_SECONDS = attachments.length > 0 ? 120 : 60;
         const MAX_WAIT_SECONDS = 600; // 10 minutes max for heavy reasoning models
 
         const checkInterval = setInterval(() => {
@@ -671,7 +697,12 @@ async function askWebProvider(text, attachments = []) {
             const currentCount = responses.length;
             const currentLastText = currentCount > 0 ? extractCleanResponse(responses[currentCount - 1]) : "";
 
-            const hasStarted = currentCount > initialCount || (currentCount > 0 && currentLastText !== initialLastText && currentLastText.length > 0);
+            const targetElement = responses.length > 0 ? responses[responses.length - 1] : null;
+            const isStillStreaming = provider.stopBtn ? document.querySelector(provider.stopBtn) !== null : false;
+            const isThinking = document.querySelector('.thinking-process, .ds-markdown--thought, [data-testid="thought-content"], [data-testid="reasoning-summary"], .result-streaming') !== null;
+
+            // Generation has started if stop button is visible, reasoning is active, or responses changed
+            const hasStarted = isStillStreaming || isThinking || currentCount > initialCount || (currentCount > 0 && currentLastText !== initialLastText);
 
             if (!hasStarted) {
                 if (totalSeconds > START_TIMEOUT_SECONDS) {
@@ -681,11 +712,9 @@ async function askWebProvider(text, attachments = []) {
                 return;
             }
 
-            const targetElement = responses[responses.length - 1];
-            const isStillStreaming = provider.stopBtn ? document.querySelector(provider.stopBtn) !== null : false;
             const latestResponse = extractCleanResponse(targetElement);
 
-            if (!isStillStreaming && latestResponse.length > 0 && latestResponse === lastText) {
+            if (!isStillStreaming && !isThinking && latestResponse.length > 0 && latestResponse === lastText) {
                 stableCount++;
                 if (stableCount >= 3) {
                     clearInterval(checkInterval);
