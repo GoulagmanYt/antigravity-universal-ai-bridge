@@ -412,4 +412,8 @@ test("Comparison 11: DeepSeek Follow-Up DOM Resolution (Zero wrong-button leakag
     // Test 3: If no send button exists, it must return null and NEVER leak upload/retry/copy buttons
     const resolvedLeakage = deepseek.customResolver.findSendButton(mockTextarea3);
     assert.equal(resolvedLeakage, null, "Must return null and never click upload or retry buttons when send button is absent");
+
+    // Test 4: Top-level ProvidersMod.findSendButton must return the composer send button even if disabled, and NEVER leak to warning/retry buttons
+    const topLevelResolved = ProvidersMod.findSendButton(deepseek, mockTextarea1);
+    assert.equal(topLevelResolved, mockSendBtnDisabled, "Top-level findSendButton must respect customResolver and not leak to global selectors");
 });

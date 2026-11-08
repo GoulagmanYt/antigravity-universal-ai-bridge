@@ -572,10 +572,8 @@
         'div[contenteditable="true"]'
       ],
       sendButtonSelectors: [
-        'div[role="button"].ds-button--circle:not(.ds-button--disabled)',
-        'div[role="button"].ds-button--primary:not(.ds-button--disabled)',
-        '.ds-button--circle:not(.ds-button--disabled)',
-        '.ds-button--primary:not(.ds-button--disabled)',
+        'div[role="button"].ds-button--primary.ds-button--circle:not(.ds-button--disabled):not(.ds-button--warning)',
+        'div[role="button"].ds-button--primary:not(.ds-button--disabled):not(.ds-button--warning)',
         'button[type="submit"]:not([disabled])',
         'div[role="button"][aria-disabled="false"][aria-label*="Send" i]',
         'div[role="button"][aria-disabled="false"][aria-label*="Envoyer" i]'
@@ -751,15 +749,12 @@
     const effectiveInput = inputEl || findInputElement(provider);
     if (provider.customResolver && typeof provider.customResolver.findSendButton === 'function') {
       const customBtn = provider.customResolver.findSendButton(effectiveInput);
-      if (customBtn && isVisibleElement(customBtn)) {
+      if (customBtn) {
         return customBtn;
       }
     }
     const direct = queryFirst(provider.sendButtonSelectors, { requireVisible: true });
     if (direct) return direct;
-    if (provider.customResolver && typeof provider.customResolver.findSendButton === 'function') {
-      return provider.customResolver.findSendButton(effectiveInput);
-    }
     return null;
   }
 
