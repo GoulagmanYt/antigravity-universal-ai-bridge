@@ -558,6 +558,7 @@ function fillInputBox(editor, text) {
                 composed: true,
                 clipboardData: dt
             });
+            Object.defineProperty(pasteEvent, 'clipboardData', { value: dt });
             editor.dispatchEvent(pasteEvent);
         } catch (e) {}
     }
@@ -593,7 +594,36 @@ function findAssistantResponses() {
     const byRole = Array.from(document.querySelectorAll('[data-message-author-role="assistant"], [data-testid="assistant-message"], .agent-turn'));
     if (byRole.length > 0) return byRole;
 
-    // 2. ChatGPT conversation turns
+    // 2. Explicit ancestor resolution from Copy & Turn Action Buttons (Director Directive)
+    const actionBtns = Array.from(document.querySelectorAll(
+        'button[data-testid="copy-turn-action-button"], ' +
+        'button[data-testid="thumbs-up-turn-action-button"], ' +
+        'button[data-testid="read-aloud-turn-action-button"], ' +
+        'button[aria-label*="Copier" i], ' +
+        'button[aria-label*="Copy" i]'
+    ));
+    if (actionBtns.length > 0) {
+        const foundTurns = [];
+        for (const btn of actionBtns) {
+            let cur = btn.parentElement;
+            let bestContainer = null;
+            for (let d = 0; d < 8 && cur && cur.tagName !== 'MAIN' && cur.tagName !== 'BODY'; d++) {
+                if (cur.innerText && cur.innerText.trim().length > 20) {
+                    bestContainer = cur;
+                    if (cur.getAttribute('data-testid') || (cur.className && String(cur.className).includes('turn'))) {
+                        break;
+                    }
+                }
+                cur = cur.parentElement;
+            }
+            if (bestContainer && !foundTurns.includes(bestContainer)) {
+                foundTurns.push(bestContainer);
+            }
+        }
+        if (foundTurns.length > 0) return foundTurns;
+    }
+
+    // 3. ChatGPT conversation turns
     const turns = Array.from(document.querySelectorAll('[data-testid^="conversation-turn-"], [class*="conversation-turn"]'));
     if (turns.length > 0) {
         const assistantTurns = turns.filter(turn => {
@@ -608,21 +638,21 @@ function findAssistantResponses() {
         }
     }
 
-    // 3. Fallback: all articles (excluding user)
+    // 4. Fallback: all articles (excluding user)
     const articles = Array.from(document.querySelectorAll('article'));
     if (articles.length > 0) {
         const assistantArticles = articles.filter(a => !a.querySelector('[data-message-author-role="user"]'));
         if (assistantArticles.length > 0) return assistantArticles;
     }
 
-    // 4. Main container prose / markdown fallback
+    // 5. Main container prose / markdown fallback
     const main = document.querySelector('main');
     if (main) {
         const prose = Array.from(main.querySelectorAll('.markdown, [class*="markdown"], .prose'));
         if (prose.length > 0) return prose;
     }
 
-    // 5. Provider default selector
+    // 6. Provider default selector
     return Array.from(document.querySelectorAll(provider.response));
 }
 
@@ -721,7 +751,7 @@ async function askWebProvider(text, attachments = []) {
         let lastText = "";
         let stableCount = 0;
         let totalSeconds = 0;
-        const START_TIMEOUT_SECONDS = attachments.length > 0 ? 120 : 60;
+        const START_TIMEOUT_SECONDS = attachments.length > 0 ? 180 : 90;
         const MAX_WAIT_SECONDS = 600; // 10 minutes max for heavy reasoning models
 
         const checkInterval = setInterval(() => {
