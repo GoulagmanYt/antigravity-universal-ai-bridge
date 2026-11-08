@@ -7,6 +7,5 @@ Thumbs.db
 .vscode/
 .idea/
 .serena/
-/test
 /scripts/*
 !scripts/doctor.mjs

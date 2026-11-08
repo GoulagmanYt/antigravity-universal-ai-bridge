@@ -34,7 +34,7 @@ const PROVIDERS = {
     },
     "chatgpt.com": {
         name: "ChatGPT",
-        input: 'div[contenteditable="true"], #prompt-textarea, div.ProseMirror, textarea',
+        input: '#prompt-textarea, div#prompt-textarea, div.ProseMirror[contenteditable="true"], div[contenteditable="true"], textarea',
         sendBtn: '#composer-submit-button, button[data-testid="send-button"], button[data-testid="fruitjuice-send-button"], button[aria-label*="Send" i], button[aria-label*="Envoyer" i]',
         response: '[data-message-author-role="assistant"], div[data-message-author-role="assistant"], [data-testid="assistant-message"], .agent-turn',
         stopBtn: 'button[data-testid="stop-button"], button[aria-label*="Arrêter" i], button[aria-label*="Stop" i], #composer-submit-button[aria-label*="Arrêter" i], #composer-submit-button[aria-label*="Stop" i], .result-streaming',
@@ -45,7 +45,7 @@ const PROVIDERS = {
     },
     "chat.openai.com": {
         name: "ChatGPT",
-        input: 'div[contenteditable="true"], #prompt-textarea, div.ProseMirror, textarea',
+        input: '#prompt-textarea, div#prompt-textarea, div.ProseMirror[contenteditable="true"], div[contenteditable="true"], textarea',
         sendBtn: '#composer-submit-button, button[data-testid="send-button"], button[data-testid="fruitjuice-send-button"], button[aria-label*="Send" i], button[aria-label*="Envoyer" i]',
         response: '[data-message-author-role="assistant"], div[data-message-author-role="assistant"], [data-testid="assistant-message"], .agent-turn',
         stopBtn: 'button[data-testid="stop-button"], button[aria-label*="Arrêter" i], button[aria-label*="Stop" i], #composer-submit-button[aria-label*="Arrêter" i], #composer-submit-button[aria-label*="Stop" i], .result-streaming',
@@ -253,6 +253,9 @@ function connectBridge() {
         }
 
         if (data.type === 'check_session') {
+            const composer = document.querySelector(provider.input) || findElementDeep(provider.input) || document.querySelector('#prompt-textarea');
+            const submitBtn = document.querySelector(provider.sendBtn) || document.querySelector('#composer-submit-button') || document.querySelector('button[data-testid="send-button"]');
+            const micBtn = document.querySelector('button[aria-label*="vocale" i], button[aria-label*="voice" i]');
             const existingResponses = findAssistantResponses();
             const sessionPayload = {
                 provider: provider.name,
@@ -262,6 +265,12 @@ function connectBridge() {
                     existingResponsesCount: existingResponses.length,
                     hasMain: document.querySelector('main') !== null,
                     conversationTurnsCount: document.querySelectorAll('[data-testid^="conversation-turn-"]').length,
+                    composerFound: composer !== null,
+                    composerTag: composer?.tagName,
+                    composerTextLength: composer?.innerText?.trim().length || 0,
+                    hasSubmitBtn: submitBtn !== null,
+                    submitBtnDisabled: submitBtn?.disabled,
+                    hasMicBtn: micBtn !== null,
                     lastResponseSnippet: existingResponses.length > 0 ? extractCleanResponse(existingResponses[existingResponses.length - 1]).slice(0, 100) : ""
                 }
             };
@@ -381,11 +390,11 @@ async function uploadAttachmentsToDOM(editor, rawAttachments) {
     const hasAttachmentChips = () => {
         if (!provider.attachmentChip) return false;
         const chips = Array.from(document.querySelectorAll(provider.attachmentChip));
-        if (chips.length > 0) {
-            const isUploading = chips.some(c => c.querySelector('[role="progressbar"], .animate-spin, svg[class*="loading"]'));
+        if (chips.length >= attachments.length) {
+            const isUploading = chips.some(c => c.querySelector('[role="progressbar"], .animate-spin'));
             return !isUploading;
         }
-        return findElementDeep(provider.attachmentChip) !== null;
+        return false;
     };
 
     console.log(`[Bridge] Attaching ${attachments.length} file(s) to ${provider.name}...`);
@@ -515,10 +524,26 @@ function fillInputBox(editor, text) {
     }
 
     // Modern ProseMirror / rich-text editors (ChatGPT, Claude, Gemini)
-    // Vector 1: Native editing insertion via execCommand
-    document.execCommand('selectAll', false, null);
+    // Direct ProseMirror view access if attached to DOM
+    try {
+        const pmView = editor.pmViewDesc?.view || editor.__vue__?.editorView;
+        if (pmView && pmView.state && pmView.dispatch) {
+            const { state, dispatch } = pmView;
+            const tr = state.tr.replaceWith(0, state.doc.content.size, state.schema.text(text));
+            dispatch(tr);
+            editor.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+            return;
+        }
+    } catch (e) {}
+
+    // Vector 1: Native editing insertion via execCommand with explicit Selection Range
     let inserted = false;
     try {
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        sel.removeAllRanges();
+        sel.addRange(range);
         inserted = document.execCommand('insertText', false, text);
     } catch (e) {}
 
@@ -583,18 +608,22 @@ function findAssistantResponses() {
         }
     }
 
-    // 3. Provider default selector
-    const def = Array.from(document.querySelectorAll(provider.response));
-    if (def.length > 0) return def;
+    // 3. Fallback: all articles (excluding user)
+    const articles = Array.from(document.querySelectorAll('article'));
+    if (articles.length > 0) {
+        const assistantArticles = articles.filter(a => !a.querySelector('[data-message-author-role="user"]'));
+        if (assistantArticles.length > 0) return assistantArticles;
+    }
 
-    // 4. Main container prose fallback
+    // 4. Main container prose / markdown fallback
     const main = document.querySelector('main');
     if (main) {
-        const prose = Array.from(main.querySelectorAll('.prose, [class*="markdown"]'));
+        const prose = Array.from(main.querySelectorAll('.markdown, [class*="markdown"], .prose'));
         if (prose.length > 0) return prose;
     }
 
-    return [];
+    // 5. Provider default selector
+    return Array.from(document.querySelectorAll(provider.response));
 }
 
 function extractCleanResponse(element) {
@@ -670,18 +699,22 @@ async function askWebProvider(text, attachments = []) {
                   document.querySelector('.send-button-container button');
 
         const isDisabled = !sendBtn || sendBtn.disabled || sendBtn.getAttribute('aria-disabled') === 'true' || sendBtn.className.includes('opacity-50');
-        const hasActiveSpinner = document.querySelector('[role="progressbar"], .animate-spin, svg[class*="loading"]') !== null;
 
-        if (sendBtn && !isDisabled && !hasActiveSpinner) {
+        if (sendBtn && !isDisabled) {
             break;
         }
     }
 
-    if (sendBtn && !sendBtn.disabled && sendBtn.getAttribute('aria-disabled') !== 'true' && !sendBtn.className.includes('opacity-50')) {
+    const isReadyToSend = sendBtn && !sendBtn.disabled && sendBtn.getAttribute('aria-disabled') !== 'true' && !sendBtn.className.includes('opacity-50');
+    if (!isReadyToSend && attachments.length > 0) {
+        return `Error: Server upload confirmation timed out on ${provider.name}. Attachment processing was not completed by the server within 20s. Dispatch aborted to protect prompt integrity.`;
+    }
+
+    if (isReadyToSend) {
         sendBtn.click();
     } else {
-        if (sendBtn) sendBtn.click();
         editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, composed: true }));
+        editor.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, composed: true }));
     }
 
     return new Promise((resolve) => {
@@ -699,7 +732,13 @@ async function askWebProvider(text, attachments = []) {
 
             const targetElement = responses.length > 0 ? responses[responses.length - 1] : null;
             const isStillStreaming = provider.stopBtn ? document.querySelector(provider.stopBtn) !== null : false;
-            const isThinking = document.querySelector('.thinking-process, .ds-markdown--thought, [data-testid="thought-content"], [data-testid="reasoning-summary"], .result-streaming') !== null;
+            
+            // Scope reasoning detection to active streaming AND targetElement (Director Directive B)
+            const isThinking = isStillStreaming && (
+                (targetElement && targetElement.querySelector('[data-testid="thought-content"], [data-testid="reasoning-summary"], .thinking-process, .ds-markdown--thought') !== null) ||
+                (targetElement && /réfléchi|thought for|thinking/i.test(targetElement.innerText)) ||
+                document.querySelector('.result-streaming') !== null
+            );
 
             // Generation has started if stop button is visible, reasoning is active, or responses changed
             const hasStarted = isStillStreaming || isThinking || currentCount > initialCount || (currentCount > 0 && currentLastText !== initialLastText);
