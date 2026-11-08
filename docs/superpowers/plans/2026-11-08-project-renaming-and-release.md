@@ -35,7 +35,7 @@
 **Files:**
 - Modify: `README.md`
 
-- [ ] Remove emojis from all section headers:
+- [x] Remove emojis from all section headers:
   - `## 🥊 Why WebAI Bridge?` -> `## Why WebAI Bridge?`
   - `### 💸 The Double-Billing Trap` -> `### The Double-Billing Trap`
   - `### 🎭 Fixed Two-Agent Architecture` -> `### Fixed Two-Agent Architecture`
@@ -52,9 +52,9 @@
   - `## 🔄 Upgrading from 2.3` -> `## Upgrading from 2.3`
   - `## 🤝 Contributing` -> `## Contributing`
   - `## 📄 License` -> `## License`
-- [ ] Clean up emojis from nav links at the top (`[Quickstart](#quickstart) · [Why WebAI Bridge?](#why-webai-bridge)...`).
-- [ ] Clean up table cells in comparison matrix (replace `💸`, `🎉`, `⚡`, `🧠`, `🛡️`, `✨` with clean text or standard indicators).
-- [ ] Verify that there are no mentions of `gemini-bridge` in setup instructions or archive names (all refer to `webai-bridge`).
+- [x] Clean up emojis from nav links at the top (`[Quickstart](#quickstart) · [Why WebAI Bridge?](#why-webai-bridge)...`).
+- [x] Clean up table cells in comparison matrix (replace `💸`, `🎉`, `⚡`, `🧠`, `🛡️`, `✨` with clean text or standard indicators).
+- [x] Verify that there are no mentions of `gemini-bridge` in setup instructions or archive names (all refer to `webai-bridge`).
 
 ---
 
@@ -65,12 +65,12 @@
 - Modify: `extension/popup.js`
 - Modify: `test/live-integration.mjs`
 
-- [ ] In `extension/popup.html`:
+- [x] In `extension/popup.html`:
   - Change `Debug Mode (Logs Détaillés)` -> `Debug Mode (Detailed Logs)`
   - Change `Capture les événements DOM, boutons et requêtes en temps réel pour diagnostic immédiat.` -> `Captures real-time DOM events, buttons, and requests for live diagnostics.`
   - Change `Copier les logs` -> `Copy Logs`
   - Change `Vider` -> `Clear Logs`
-- [ ] In `extension/popup.js`:
+- [x] In `extension/popup.js`:
   - Translate all `setFeedback` messages to English:
     - `Mode Debug activé (logs détaillés)` -> `Debug mode enabled (detailed logs)`
     - `Mode Debug désactivé` -> `Debug mode disabled`
@@ -82,7 +82,7 @@
     - `Erreur presse-papier` -> `Clipboard error`
     - `${logs.length} logs disponibles` -> `${logs.length} logs available`
     - `Buffer de logs vidé` -> `Log buffer cleared`
-- [ ] In `test/live-integration.mjs`:
+- [x] In `test/live-integration.mjs`:
   - Translate all French `console.log` and assertion descriptions into English.
 
 ---
@@ -93,9 +93,9 @@
 - Modify: `C:\Users\robin\.gemini\config\mcp_config.json`
 - Command: `gh repo rename webai-bridge --yes`
 
-- [ ] Rename GitHub repository `GoulagmanYt/antigravity-universal-ai-bridge` to `GoulagmanYt/webai-bridge` using `gh repo rename webai-bridge --yes`.
-- [ ] Update git remote `origin` url in workspace to `https://github.com/GoulagmanYt/webai-bridge.git`.
-- [ ] Update `C:\Users\robin\.gemini\config\mcp_config.json`:
+- [x] Rename GitHub repository `GoulagmanYt/antigravity-universal-ai-bridge` to `GoulagmanYt/webai-bridge` using `gh repo rename webai-bridge --yes`.
+- [x] Update git remote `origin` url in workspace to `https://github.com/GoulagmanYt/webai-bridge.git`.
+- [x] Update `C:\Users\robin\.gemini\config\mcp_config.json`:
   - Rename key `"gemini-web-pro"` to `"webai-bridge"`.
   - Point the path to `C:/Users/robin/Documents/GitHub/antigravity-universal-ai-bridge/extension/bridge.mjs`.
 
@@ -106,10 +106,10 @@
 **Files:**
 - Verify: all project tests and linters
 
-- [ ] Run `npm run check`
-- [ ] Run `npm test`
-- [ ] Run `npm run doctor`
-- [ ] Commit all changes to `feat/v2.2-stability-and-multilingual` with conventional commit message `chore(branding): unify project name to webai-bridge, remove emojis, translate UI to English`.
+- [x] Run `npm run check`
+- [x] Run `npm test`
+- [x] Run `npm run doctor`
+- [x] Commit all changes to `feat/v2.2-stability-and-multilingual` with conventional commit message `chore(branding): unify project name to webai-bridge, remove emojis, translate UI to English`.
 
 ---
 
@@ -118,10 +118,10 @@
 **Files:**
 - Branch: `main`
 
-- [ ] Switch to `main` branch (`git checkout main`).
-- [ ] Merge `feat/v2.2-stability-and-multilingual` into `main`.
-- [ ] Push `main` to `origin/main`.
-- [ ] Create git tag `v2.4.0` (`git tag -a v2.4.0 -m "Release v2.4.0: WebAI Bridge Zero-Token MCP Orchestrator"`).
-- [ ] Push tag to `origin` (`git push origin v2.4.0`).
-- [ ] Build `dist/webai-bridge.zip` containing `extension`, `package.json`, `package-lock.json`, and `node_modules`.
-- [ ] Create GitHub release `v2.4.0` using `gh release create v2.4.0 dist/webai-bridge.zip --title "v2.4.0 - WebAI Bridge: Zero-Token MCP Orchestrator" --notes "..."`.
+- [x] Switch to `main` branch (`git checkout main`).
+- [x] Merge `feat/v2.2-stability-and-multilingual` into `main`.
+- [x] Push `main` to `origin/main`.
+- [x] Create git tag `v2.4.0` (`git tag -a v2.4.0 -m "Release v2.4.0: WebAI Bridge Zero-Token MCP Orchestrator"`).
+- [x] Push tag to `origin` (`git push origin v2.4.0`).
+- [x] Build `dist/webai-bridge.zip` containing `extension`, `package.json`, `package-lock.json`, and `node_modules`.
+- [x] Create GitHub release `v2.4.0` using `gh release create v2.4.0 dist/webai-bridge.zip --title "v2.4.0 - WebAI Bridge: Zero-Token MCP Orchestrator" --notes "..."`.
