@@ -79,6 +79,10 @@
       composerRoot.querySelectorAll('button, div[role="button"], span[role="button"], label[role="button"]')
     ).filter((el) => {
       if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+      // Exclude toggle buttons (e.g. DeepThink R1, Web Search toggles)
+      if (el.classList.contains('ds-toggle-button') || (typeof el.closest === 'function' && el.closest('.ds-toggle-button'))) {
+        return false;
+      }
       const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
       if (style && (style.display === 'none' || style.visibility === 'hidden')) return false;
       return Boolean(el.querySelector('svg'));
@@ -91,6 +95,12 @@
       if (fileInput) {
         const labelParent = fileInput.closest('label, div[role="button"], button');
         if (labelParent) return labelParent;
+        const prevSibling = fileInput.previousElementSibling;
+        if (prevSibling && (prevSibling.getAttribute('role') === 'button' || prevSibling.querySelector?.('[role="button"]'))) {
+          return prevSibling.getAttribute('role') === 'button' ? prevSibling : prevSibling.querySelector('[role="button"]');
+        }
+        const parentBtn = fileInput.parentElement?.querySelector('div[role="button"], button');
+        if (parentBtn) return parentBtn;
       }
       return candidates[0] || null;
     }
@@ -99,12 +109,13 @@
       for (let i = candidates.length - 1; i >= 0; i--) {
         const btn = candidates[i];
         const ariaLabel = (btn.getAttribute('aria-label') || btn.getAttribute('title') || '').toLowerCase();
-        if (ariaLabel.includes('stop') || ariaLabel.includes('arrêter') || ariaLabel.includes('cancel')) {
+        if (ariaLabel.includes('stop') || ariaLabel.includes('arrê') || ariaLabel.includes('cancel')) {
           return btn;
         }
-        const rectSvg = btn.querySelector('svg rect');
-        const pathSvg = btn.querySelectorAll('svg path');
-        if (rectSvg && pathSvg.length <= 1) {
+        // Direct rect in svg body (must not be inside <clipPath> or <defs>)
+        const rectSvg = btn.querySelector('svg > rect, svg > g:not(defs) > rect');
+        const clipPath = rectSvg && typeof rectSvg.closest === 'function' ? rectSvg.closest('clipPath, defs') : null;
+        if (rectSvg && !clipPath) {
           return btn;
         }
       }
@@ -117,11 +128,14 @@
         const disabled =
           btn.disabled ||
           btn.getAttribute('aria-disabled') === 'true' ||
-          btn.hasAttribute('disabled');
+          btn.hasAttribute('disabled') ||
+          btn.classList.contains('disabled') ||
+          btn.classList.contains('ds-button--disabled');
         if (!disabled && isVisibleElement(btn)) {
           return btn;
         }
       }
+      return candidates[candidates.length - 1] || null;
     }
 
     return null;
@@ -403,10 +417,13 @@
         'button[aria-label*="Stop" i]'
       ],
       streamingIndicators: [
-        '[aria-busy="true"]',
-        'div[role="button"][aria-label*="Stop" i]'
+        'div[role="button"][aria-label*="Stop" i]',
+        'div[role="button"][aria-label*="Arrêter" i]',
+        'button[aria-label*="Stop" i]'
       ],
       responseSelectors: [
+        '.ds-markdown.ds-assistant-message-main-content',
+        '.ds-markdown:not(.ds-markdown--thought):not([class*="ds-think"])',
         '[class*="ds-markdown"]',
         '.markdown-body',
         '[data-message-author-role="assistant"]',
@@ -423,19 +440,24 @@
       uploadTriggerSelectors: [
         'div[role="button"][aria-label*="upload" i]',
         'div[role="button"][aria-label*="file" i]',
-        'div[role="button"][aria-label*="fichier" i]'
+        'div[role="button"][aria-label*="fichier" i]',
+        '.ds-button--icon'
       ],
       attachmentChipSelectors: [
         '[class*="file-card"]',
         '[class*="attachment-item"]',
+        '[class*="file-chip"]',
+        '[class*="file-item"]',
         '[aria-label*="Remove" i]',
         '[aria-label*="delete" i]'
       ],
       uploadBusySelectors: [
-        '[role="progressbar"]',
-        '[aria-busy="true"]'
+        '[role="progressbar"]'
       ],
       artifactCleanupSelectors: [
+        '[class*="ds-think"]',
+        '.ds-think-content',
+        '[class*="thought-content"]',
         '.md-code-block-banner',
         '[class*="md-code-block-banner"]',
         '[class*="code-info-button"]',
@@ -579,7 +601,7 @@
     if (stopBtn) return true;
     if (provider.customResolver && typeof provider.customResolver.findStopButton === 'function') {
       const structuralStop = provider.customResolver.findStopButton(inputEl || findInputElement(provider));
-      if (structuralStop) return true;
+      if (structuralStop && isVisibleElement(structuralStop)) return true;
     }
     return false;
   }
