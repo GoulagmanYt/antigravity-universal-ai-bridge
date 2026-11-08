@@ -4,42 +4,66 @@ const PROVIDERS = {
         input: 'div.ql-editor[contenteditable="true"], div[contenteditable="true"][role="textbox"], rich-textarea .input-area, rich-textarea div[contenteditable="true"], div[contenteditable="true"]',
         sendBtn: 'button.send-button, button[aria-label*="Send" i], button[aria-label*="Envoyer" i], .send-button-container button',
         response: 'message-content, .model-response-text, model-response .response-content, .response-container-content',
-        stopBtn: 'button[aria-label*="Stop" i], button[aria-label*="Arrêter" i]'
+        stopBtn: 'button[aria-label*="Stop" i], button[aria-label*="Arrêter" i]',
+        attachmentBtn: 'button[aria-label*="Ajouter" i], button[aria-label*="Importer" i], button[aria-label*="Add" i], button[aria-label*="Upload" i], button[aria-label*="Attach" i], button.uploader-button, [data-testid="plus-button"]',
+        fileInput: 'input[type="file"], .file-input',
+        attachmentChip: 'uploader-file-preview, .file-preview, .attachment-preview, [data-test-id*="file"], mat-chip, .uploaded-file, [aria-label*="Supprimer" i], [aria-label*="Remove" i], .preview-container',
+        maxFilesPerTurn: 10
     },
     "aistudio.google.com": {
         name: "Google AI Studio",
         input: 'textarea.textarea, textarea, div[contenteditable="true"]',
         sendBtn: 'button.run-button, button[aria-label*="Run"], button[type="submit"]',
         response: '.chat-turn-content, ms-chat-turn, .model-prompt-container',
-        stopBtn: 'button.stop-button, button[aria-label*="Stop"]'
+        stopBtn: 'button.stop-button, button[aria-label*="Stop"]',
+        attachmentBtn: 'button[aria-label*="Insert" i], button[aria-label*="Upload" i], button[aria-label*="Ajouter" i]',
+        fileInput: 'input[type="file"]',
+        attachmentChip: '.media-chip, .file-chip, ms-media-chip',
+        maxFilesPerTurn: 15
     },
     "claude.ai": {
         name: "Claude",
         input: 'div.ProseMirror[contenteditable="true"], fieldset div[contenteditable="true"]',
         sendBtn: 'button[aria-label*="Send" i], button[aria-label*="Envoyer" i], button[data-testid="send-button"]',
         response: '.font-claude-message, .font-claude-response, [data-testid="chat-message-content"]',
-        stopBtn: 'button[aria-label*="Stop" i], [data-is-streaming="true"]'
+        stopBtn: 'button[aria-label*="Stop" i], [data-is-streaming="true"]',
+        attachmentBtn: 'button[aria-label*="Upload" i], button[aria-label*="Attach" i], button[aria-label*="Ajouter" i]',
+        fileInput: 'input[type="file"][data-testid="file-upload"], input[type="file"]',
+        attachmentChip: '[data-testid*="file"], .file-thumbnail, [aria-label*="Remove" i]',
+        maxFilesPerTurn: 15
     },
     "chatgpt.com": {
         name: "ChatGPT",
-        input: '#prompt-textarea, div[contenteditable="true"]#prompt-textarea',
-        sendBtn: 'button[data-testid="send-button"], button[data-testid="fruitjuice-send-button"], button[aria-label*="Send" i], button[aria-label*="Envoyer" i]',
-        response: 'div[data-message-author-role="assistant"]',
-        stopBtn: 'button[data-testid="stop-button"], .result-streaming'
+        input: 'div[contenteditable="true"], #prompt-textarea, div.ProseMirror, textarea',
+        sendBtn: '#composer-submit-button, button[data-testid="send-button"], button[data-testid="fruitjuice-send-button"], button[aria-label*="Send" i], button[aria-label*="Envoyer" i]',
+        response: '[data-message-author-role="assistant"], div[data-message-author-role="assistant"], [data-testid="assistant-message"], .agent-turn',
+        stopBtn: 'button[data-testid="stop-button"], button[aria-label*="Arrêter" i], button[aria-label*="Stop" i], #composer-submit-button[aria-label*="Arrêter" i], #composer-submit-button[aria-label*="Stop" i], .result-streaming',
+        attachmentBtn: 'button[data-testid="attach-button"], button[aria-label*="Attach" i], button[aria-label*="Ajouter" i], button[aria-label*="Joindre" i], button[aria-label*="file" i]',
+        fileInput: 'input[type="file"]',
+        attachmentChip: '[data-testid*="attachment"], .group.relative.inline-block, [aria-label*="Remove" i], [aria-label*="Supprimer" i]',
+        maxFilesPerTurn: 10
     },
     "chat.openai.com": {
         name: "ChatGPT",
-        input: '#prompt-textarea, div[contenteditable="true"]#prompt-textarea',
-        sendBtn: 'button[data-testid="send-button"], button[data-testid="fruitjuice-send-button"], button[aria-label*="Send"]',
-        response: 'div[data-message-author-role="assistant"]',
-        stopBtn: 'button[data-testid="stop-button"], .result-streaming'
+        input: 'div[contenteditable="true"], #prompt-textarea, div.ProseMirror, textarea',
+        sendBtn: '#composer-submit-button, button[data-testid="send-button"], button[data-testid="fruitjuice-send-button"], button[aria-label*="Send" i], button[aria-label*="Envoyer" i]',
+        response: '[data-message-author-role="assistant"], div[data-message-author-role="assistant"], [data-testid="assistant-message"], .agent-turn',
+        stopBtn: 'button[data-testid="stop-button"], button[aria-label*="Arrêter" i], button[aria-label*="Stop" i], #composer-submit-button[aria-label*="Arrêter" i], #composer-submit-button[aria-label*="Stop" i], .result-streaming',
+        attachmentBtn: 'button[data-testid="attach-button"], button[aria-label*="Attach" i], button[aria-label*="Ajouter" i]',
+        fileInput: 'input[type="file"]',
+        attachmentChip: '[data-testid*="attachment"], .group.relative.inline-block, [aria-label*="Remove" i]',
+        maxFilesPerTurn: 10
     },
     "chat.deepseek.com": {
         name: "DeepSeek",
         input: 'textarea#chat-input, textarea',
         sendBtn: 'div[role="button"][aria-disabled="false"], button[type="submit"], button.ds-icon-button',
         response: '.ds-markdown',
-        stopBtn: 'button[aria-label*="Stop"], .ds-icon-button[aria-label*="Stop"], div[role="button"][aria-label*="Stop"]'
+        stopBtn: 'button[aria-label*="Stop"], .ds-icon-button[aria-label*="Stop"], div[role="button"][aria-label*="Stop"]',
+        attachmentBtn: 'button[aria-label*="Upload" i], button[aria-label*="Attach" i]',
+        fileInput: 'input[type="file"]',
+        attachmentChip: '.ds-file-card, [class*="file-item"], [class*="attachment"]',
+        maxFilesPerTurn: 10
     }
 };
 
@@ -49,7 +73,11 @@ const provider = PROVIDERS[currentHost] || {
     input: 'div[contenteditable="true"], textarea',
     sendBtn: 'button[type="submit"], button[aria-label*="Send"]',
     response: '.markdown, message-content',
-    stopBtn: null
+    stopBtn: null,
+    attachmentBtn: null,
+    fileInput: 'input[type="file"]',
+    attachmentChip: null,
+    maxFilesPerTurn: 10
 };
 
 let ws = null;
@@ -153,7 +181,8 @@ statusBtn.addEventListener('mousedown', (e) => {
     window.addEventListener('mouseup', onMouseUp);
 });
 
-function updateUI(state) {
+function updateUI(state, detail = '') {
+    const suffix = detail ? ` (${detail})` : '';
     if (state === 'standby') {
         statusLabel.innerText = `⚪ Click to dedicate (${provider.name}) to Antigravity`;
         statusBtn.style.background = '#242424';
@@ -167,7 +196,7 @@ function updateUI(state) {
         statusBtn.style.background = '#0d3b1e';
         statusBtn.style.borderColor = '#2ea043';
     } else if (state === 'working') {
-        statusLabel.innerText = `🔵 (${provider.name}) Processing Antigravity Task...`;
+        statusLabel.innerText = `🔵 (${provider.name}) Processing Task${suffix}...`;
         statusBtn.style.background = '#0a2d4d';
         statusBtn.style.borderColor = '#388bfd';
     }
@@ -205,7 +234,7 @@ function connectBridge() {
 
     ws.onopen = () => updateUI('connected');
 
-    ws.onmessage = async(event) => {
+    ws.onmessage = async (event) => {
         let data;
         try {
             data = JSON.parse(event.data);
@@ -224,11 +253,17 @@ function connectBridge() {
         }
 
         if (data.type === 'check_session') {
-            const existingResponses = document.querySelectorAll(provider.response).length;
+            const existingResponses = findAssistantResponses();
             const sessionPayload = {
                 provider: provider.name,
-                isEmptyChat: existingResponses === 0,
-                chatKey: window.location.origin + window.location.pathname
+                isEmptyChat: existingResponses.length === 0,
+                chatKey: window.location.origin + window.location.pathname,
+                domDiagnostic: {
+                    existingResponsesCount: existingResponses.length,
+                    hasMain: document.querySelector('main') !== null,
+                    conversationTurnsCount: document.querySelectorAll('[data-testid^="conversation-turn-"]').length,
+                    lastResponseSnippet: existingResponses.length > 0 ? extractCleanResponse(existingResponses[existingResponses.length - 1]).slice(0, 100) : ""
+                }
             };
             ws.send(JSON.stringify({
                 id,
@@ -240,10 +275,13 @@ function connectBridge() {
         }
 
         if (data.type === 'prompt') {
-            updateUI('working');
-            const promptText = (data.payload && data.payload.prompt) ? data.payload.prompt : (data.prompt || "");
+            const payload = data.payload || data;
+            const promptText = payload.prompt || "";
+            const attachments = Array.isArray(payload.attachments) ? payload.attachments : [];
+
+            updateUI('working', attachments.length > 0 ? `${attachments.length} file(s)` : '');
             try {
-                const reply = await askWebProvider(promptText);
+                const reply = await askWebProvider(promptText, attachments);
                 ws.send(JSON.stringify({
                     id,
                     type: 'prompt',
@@ -273,6 +311,189 @@ function connectBridge() {
     };
 }
 
+/**
+ * Consolidates excess attachments into a single bundle file if count exceeds provider's per-turn file limit.
+ */
+function normalizeAttachmentsForProvider(attachments) {
+    if (!attachments || attachments.length === 0) return [];
+    const maxFiles = provider.maxFilesPerTurn || 10;
+    if (attachments.length <= maxFiles) return attachments;
+
+    const kept = attachments.slice(0, maxFiles - 1);
+    const overflow = attachments.slice(maxFiles - 1);
+    const combinedContent = overflow.map(att =>
+        `// ============================================================================\n` +
+        `// BUNDLED FILE: ${att.originalPath || att.name}\n` +
+        `// ============================================================================\n\n` +
+        `${att.content}\n\n`
+    ).join("\n");
+
+    kept.push({
+        name: `99_COMBINED_WORKSPACE_FILES_${overflow.length}.txt`,
+        originalPath: "COMBINED_OVERFLOW_BUNDLE",
+        content: combinedContent,
+        mimeType: "text/plain"
+    });
+    return kept;
+}
+
+function findElementDeep(selector, root = document) {
+    if (!root) return null;
+    let found = root.querySelector ? root.querySelector(selector) : null;
+    if (found) return found;
+    const elements = root.querySelectorAll ? root.querySelectorAll('*') : [];
+    for (const el of elements) {
+        if (el.shadowRoot) {
+            found = findElementDeep(selector, el.shadowRoot);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+/**
+ * Builds browser File objects and a populated DataTransfer container.
+ */
+function buildDataTransfer(attachments) {
+    const dt = new DataTransfer();
+    for (const att of attachments) {
+        const file = new File([att.content], att.name, {
+            type: att.mimeType || "text/plain",
+            lastModified: Date.now()
+        });
+        dt.items.add(file);
+    }
+    return dt;
+}
+
+/**
+ * Multi-strategy native file uploader for Gemini, Claude, ChatGPT, AI Studio, and DeepSeek.
+ * Strategy 1: Direct <input type="file"> assignment + change/input events (including Shadow DOM).
+ * Strategy 2: Synthetic DragEvent ('dragenter' -> 'dragover' -> 'drop' with composed: true).
+ * Strategy 3: Synthetic ClipboardEvent('paste') with files on the editor element.
+ */
+async function uploadAttachmentsToDOM(editor, rawAttachments) {
+    const attachments = normalizeAttachmentsForProvider(rawAttachments);
+    if (attachments.length === 0) return { uploaded: true, count: 0 };
+
+    const dt = buildDataTransfer(attachments);
+
+    const hasAttachmentChips = () => {
+        if (!provider.attachmentChip) return false;
+        return findElementDeep(provider.attachmentChip) !== null ||
+               document.querySelectorAll(provider.attachmentChip).length > 0;
+    };
+
+    console.log(`[Bridge] Attaching ${attachments.length} file(s) to ${provider.name}...`);
+    statusLabel.innerText = `🔵 Attaching ${attachments.length} file(s)...`;
+
+    // Strategy 1: Locate or trigger <input type="file"> (supports Shadow DOM boundaries)
+    let fileInput = findElementDeep(provider.fileInput || 'input[type="file"]');
+
+    // If file input not immediately in DOM, click attachment / plus button to mount it
+    if (!fileInput && provider.attachmentBtn) {
+        const attachBtn = findElementDeep(provider.attachmentBtn);
+        if (attachBtn) {
+            try {
+                attachBtn.click();
+                await new Promise(r => setTimeout(r, 350));
+                fileInput = findElementDeep(provider.fileInput || 'input[type="file"]');
+            } catch (e) {}
+        }
+    }
+
+    if (fileInput) {
+        try {
+            fileInput.files = dt.files;
+            fileInput.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+            fileInput.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+
+            // Wait up to 3s for attachment preview chip to confirm
+            for (let i = 0; i < 12; i++) {
+                await new Promise(r => setTimeout(r, 250));
+                if (hasAttachmentChips()) {
+                    console.log(`[Bridge] File attachment confirmed via fileInput on ${provider.name}`);
+                    statusLabel.innerText = `🟢 Attached ${attachments.length} file(s)`;
+                    return { uploaded: true, method: 'file-input', count: attachments.length };
+                }
+            }
+        } catch (e) {
+            console.warn('[Bridge] fileInput method failed:', e);
+        }
+    }
+
+    // Strategy 2: Synthetic Drag & Drop with composed: true on editor / container
+    try {
+        const dropTargets = [
+            findElementDeep('rich-textarea'),
+            findElementDeep('.input-area'),
+            findElementDeep('div[contenteditable="true"]'),
+            document.querySelector('form'),
+            editor
+        ].filter(Boolean);
+
+        for (const dropTarget of dropTargets) {
+            const eventInit = {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+                dataTransfer: dt
+            };
+            dropTarget.dispatchEvent(new DragEvent('dragenter', eventInit));
+            dropTarget.dispatchEvent(new DragEvent('dragover', eventInit));
+            await new Promise(r => setTimeout(r, 60));
+            dropTarget.dispatchEvent(new DragEvent('drop', eventInit));
+            dropTarget.dispatchEvent(new DragEvent('dragend', eventInit));
+
+            for (let i = 0; i < 8; i++) {
+                await new Promise(r => setTimeout(r, 250));
+                if (hasAttachmentChips()) {
+                    console.log(`[Bridge] File attachment confirmed via drag-drop on ${provider.name}`);
+                    statusLabel.innerText = `🟢 Attached ${attachments.length} file(s)`;
+                    return { uploaded: true, method: 'drag-drop', count: attachments.length };
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('[Bridge] Drag-drop method failed:', e);
+    }
+
+    // Strategy 3: Synthetic ClipboardEvent('paste')
+    try {
+        editor.focus();
+        const pasteEvent = new ClipboardEvent('paste', {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            clipboardData: dt
+        });
+        if (!pasteEvent.clipboardData || pasteEvent.clipboardData.files.length === 0) {
+            Object.defineProperty(pasteEvent, 'clipboardData', { value: dt });
+        }
+        editor.dispatchEvent(pasteEvent);
+
+        for (let i = 0; i < 8; i++) {
+            await new Promise(r => setTimeout(r, 250));
+            if (hasAttachmentChips()) {
+                console.log(`[Bridge] File attachment confirmed via clipboard-paste on ${provider.name}`);
+                statusLabel.innerText = `🟢 Attached ${attachments.length} file(s)`;
+                return { uploaded: true, method: 'clipboard-paste', count: attachments.length };
+            }
+        }
+    } catch (e) {
+        console.warn('[Bridge] Clipboard paste method failed:', e);
+    }
+
+    if (hasAttachmentChips()) {
+        statusLabel.innerText = `🟢 Attached ${attachments.length} file(s)`;
+        return { uploaded: true, method: 'dom-chips-detected', count: attachments.length };
+    }
+
+    statusLabel.innerText = `🟠 Fallback: files inlined`;
+    console.warn(`[Bridge] All attachment methods failed to produce attachment chips on ${provider.name}`);
+    return { uploaded: false, error: 'Attachment preview chips not detected in DOM' };
+}
+
 function fillInputBox(editor, text) {
     editor.focus();
 
@@ -284,33 +505,79 @@ function fillInputBox(editor, text) {
         } else {
             editor.value = text;
         }
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
-        editor.dispatchEvent(new Event('change', { bubbles: true }));
+        editor.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        editor.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
         return;
     }
 
-    // Modern rich-text editors (Gemini, Claude, ChatGPT)
-    document.execCommand('selectAll', false, null);
-    const inserted = document.execCommand('insertText', false, text);
-    if (!inserted || editor.innerText.trim() === '') {
-        editor.innerText = text;
-        editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
+    // Modern ProseMirror / rich-text editors (ChatGPT, Claude, Gemini)
+    if (editor.classList.contains('ProseMirror') || (currentHost && (currentHost.includes('chatgpt') || currentHost.includes('claude')))) {
+        const paragraphs = text.split('\n').map(l => `<p>${l || '<br>'}</p>`).join('');
+        editor.innerHTML = paragraphs;
+        editor.dispatchEvent(new InputEvent('input', {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            inputType: 'insertText',
+            data: text
+        }));
+    } else {
+        document.execCommand('selectAll', false, null);
+        const inserted = document.execCommand('insertText', false, text);
+        if (!inserted || editor.innerText.trim() === '') {
+            editor.innerText = text;
+            editor.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: text }));
+        }
     }
-    editor.dispatchEvent(new Event('input', { bubbles: true }));
-    editor.dispatchEvent(new Event('change', { bubbles: true }));
 
-    // Fallback if editor still empty (framework virtualization)
+    editor.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    editor.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+
     if (!editor.innerText || editor.innerText.trim() === '') {
         editor.textContent = text;
-        editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
+        editor.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: text }));
     }
+}
+
+function findAssistantResponses() {
+    // 1. Direct role / testid selector
+    const byRole = Array.from(document.querySelectorAll('[data-message-author-role="assistant"], [data-testid="assistant-message"], .agent-turn'));
+    if (byRole.length > 0) return byRole;
+
+    // 2. ChatGPT conversation turns
+    const turns = Array.from(document.querySelectorAll('[data-testid^="conversation-turn-"], [class*="conversation-turn"]'));
+    if (turns.length > 0) {
+        const assistantTurns = turns.filter(turn => {
+            const hasUser = turn.querySelector('[data-message-author-role="user"]') ||
+                            turn.querySelector('[data-testid="user-message"]');
+            return !hasUser;
+        });
+        if (assistantTurns.length > 0) {
+            return assistantTurns.map(turn => {
+                return turn.querySelector('.markdown, [class*="markdown"], .prose, [data-message-author-role="assistant"]') || turn;
+            });
+        }
+    }
+
+    // 3. Provider default selector
+    const def = Array.from(document.querySelectorAll(provider.response));
+    if (def.length > 0) return def;
+
+    // 4. Main container prose fallback
+    const main = document.querySelector('main');
+    if (main) {
+        const prose = Array.from(main.querySelectorAll('.prose, [class*="markdown"]'));
+        if (prose.length > 0) return prose;
+    }
+
+    return [];
 }
 
 function extractCleanResponse(element) {
     if (!element) return "";
     const clone = element.cloneNode(true);
 
-    // Remove thinking / reasoning accordions from Gemini, Claude, DeepSeek
+    // Remove thinking / reasoning accordions from Gemini, Claude, DeepSeek, ChatGPT
     const thoughtSelectors = [
         '.thinking-process',
         '.ds-markdown--thought',
@@ -318,18 +585,21 @@ function extractCleanResponse(element) {
         '[data-testid="thought-content"]',
         '.thought-container',
         '.model-thought',
-        'collapsible-panel'
+        'collapsible-panel',
+        '[data-testid="reasoning-summary"]'
     ];
     for (const sel of thoughtSelectors) {
         clone.querySelectorAll(sel).forEach(el => el.remove());
     }
 
-    // Remove UI decorators (copy buttons, code headers)
+    // Remove UI decorators (copy buttons, code headers, turn actions)
     const uiDecorators = [
         'button',
         '.code-header',
         '[data-testid="copy-code-button"]',
+        '[data-testid="copy-turn-action-button"]',
         '[aria-label*="Copy"]',
+        '[aria-label*="Copier"]',
         '.copy-button'
     ];
     for (const sel of uiDecorators) {
@@ -339,48 +609,74 @@ function extractCleanResponse(element) {
     return clone.innerText.trim();
 }
 
-async function askWebProvider(text) {
-    const editor = document.querySelector(provider.input);
+async function askWebProvider(text, attachments = []) {
+    let editor = document.querySelector(provider.input) || findElementDeep(provider.input) || document.querySelector('div[contenteditable="true"], textarea');
     if (!editor) return `Error: Input box not found on ${provider.name}. Please open a fresh chat session.`;
 
-    const initialCount = document.querySelectorAll(provider.response).length;
+    const getResponses = () => findAssistantResponses();
+    const initialResponses = getResponses();
+    const initialCount = initialResponses.length;
+    const initialLastText = initialCount > 0 ? extractCleanResponse(initialResponses[initialCount - 1]) : "";
 
-    fillInputBox(editor, text);
+    // 1. Attach files natively before filling the lightweight text prompt
+    let finalPromptText = text;
+    if (attachments && attachments.length > 0) {
+        const uploadResult = await uploadAttachmentsToDOM(editor, attachments);
+        if (!uploadResult.uploaded) {
+            console.warn(`[Bridge] Native file upload did not succeed (${uploadResult.error}), falling back to inline prompt text.`);
+            const inlineFallback = attachments.map(a => `\n--- FILE: ${a.originalPath || a.name} ---\n${a.content}\n`).join("\n");
+            finalPromptText = `${text}\n\n=== FALLBACK INLINE FILES (DOM ATTACHMENT FAILED) ===\n${inlineFallback}`;
+        } else {
+            console.log(`[Bridge] Successfully attached ${uploadResult.count} file(s) natively via ${uploadResult.method}.`);
+        }
+    }
 
-    // Wait up to 1.5s for modern frameworks (Angular/React) to update button ready state
+    // 2. Fill the concise text prompt into the input box
+    fillInputBox(editor, finalPromptText);
+
+    // 3. Wait up to 15s for file upload processing + send button activation (OpenAI/Gemini server upload progress)
+    const maxChecks = attachments.length > 0 ? 60 : 16;
     let sendBtn = null;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < maxChecks; i++) {
         await new Promise(r => setTimeout(r, 250));
         sendBtn = document.querySelector(provider.sendBtn) ||
+                  document.querySelector('#composer-submit-button') ||
                   document.querySelector('button[aria-label*="Send" i]') ||
                   document.querySelector('button[aria-label*="Envoyer" i]') ||
-                  document.querySelector('button.send-button') ||
+                  document.querySelector('button[data-testid="send-button"]') ||
                   document.querySelector('.send-button-container button');
 
-        if (sendBtn && !sendBtn.disabled && sendBtn.getAttribute('aria-disabled') !== 'true') {
+        if (sendBtn && !sendBtn.disabled && sendBtn.getAttribute('aria-disabled') !== 'true' && !sendBtn.className.includes('opacity-50')) {
             break;
         }
     }
 
-    if (sendBtn && !sendBtn.disabled && sendBtn.getAttribute('aria-disabled') !== 'true') {
+    if (sendBtn && !sendBtn.disabled && sendBtn.getAttribute('aria-disabled') !== 'true' && !sendBtn.className.includes('opacity-50')) {
         sendBtn.click();
     } else {
-        editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+        if (sendBtn) sendBtn.click();
+        editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, composed: true }));
     }
 
     return new Promise((resolve) => {
         let lastText = "";
         let stableCount = 0;
         let totalSeconds = 0;
+        const START_TIMEOUT_SECONDS = attachments.length > 0 ? 90 : 45;
         const MAX_WAIT_SECONDS = 600; // 10 minutes max for heavy reasoning models
 
         const checkInterval = setInterval(() => {
             totalSeconds++;
-            const responses = document.querySelectorAll(provider.response);
-            if (responses.length <= initialCount) {
-                if (totalSeconds > 35) {
+            const responses = getResponses();
+            const currentCount = responses.length;
+            const currentLastText = currentCount > 0 ? extractCleanResponse(responses[currentCount - 1]) : "";
+
+            const hasStarted = currentCount > initialCount || (currentCount > 0 && currentLastText !== initialLastText && currentLastText.length > 0);
+
+            if (!hasStarted) {
+                if (totalSeconds > START_TIMEOUT_SECONDS) {
                     clearInterval(checkInterval);
-                    resolve(`Error: Generation did not start on ${provider.name} after 35 seconds. Check if there is a rate limit or captcha.`);
+                    resolve(`Error: Generation did not start on ${provider.name} after ${START_TIMEOUT_SECONDS} seconds. Check if there is a rate limit, file upload spinner, or captcha.`);
                 }
                 return;
             }
@@ -391,7 +687,7 @@ async function askWebProvider(text) {
 
             if (!isStillStreaming && latestResponse.length > 0 && latestResponse === lastText) {
                 stableCount++;
-                if (stableCount >= 4) {
+                if (stableCount >= 3) {
                     clearInterval(checkInterval);
                     resolve(latestResponse);
                 }
