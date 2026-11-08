@@ -23,13 +23,13 @@ const PROVIDERS = {
     },
     "claude.ai": {
         name: "Claude",
-        input: 'div.ProseMirror[contenteditable="true"], fieldset div[contenteditable="true"]',
-        sendBtn: 'button[aria-label*="Send" i], button[aria-label*="Envoyer" i], button[data-testid="send-button"]',
-        response: '.font-claude-message, .font-claude-response, [data-testid="chat-message-content"]',
-        stopBtn: 'button[aria-label*="Stop" i], [data-is-streaming="true"]',
-        attachmentBtn: 'button[aria-label*="Upload" i], button[aria-label*="Attach" i], button[aria-label*="Ajouter" i]',
+        input: 'div.ProseMirror[contenteditable="true"], fieldset div[contenteditable="true"], div[contenteditable="true"]',
+        sendBtn: 'button[aria-label*="Send" i], button[aria-label*="Envoyer" i], button[data-testid="send-button"], button[aria-label*="Send Message" i]',
+        response: '.font-claude-message, .font-claude-response, [data-testid="chat-message-content"], div[class*="standard-markdown"]',
+        stopBtn: 'button[aria-label*="Stop" i], button[aria-label*="Arrêter" i], [data-is-streaming="true"]',
+        attachmentBtn: 'button[aria-label*="Upload" i], button[aria-label*="Attach" i], button[aria-label*="Ajouter" i], button[aria-label*="Add content" i]',
         fileInput: 'input[type="file"][data-testid="file-upload"], input[type="file"]',
-        attachmentChip: '[data-testid*="file"], .file-thumbnail, [aria-label*="Remove" i]',
+        attachmentChip: '[data-testid*="file"], .file-thumbnail, [aria-label*="Remove" i], [aria-label*="Supprimer" i], div[class*="FileThumbnail"]',
         maxFilesPerTurn: 15
     },
     "chatgpt.com": {
