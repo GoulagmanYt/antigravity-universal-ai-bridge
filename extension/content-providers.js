@@ -307,19 +307,19 @@
         'article[data-testid*="conversation-turn"] .result-streaming'
       ],
       responseSelectors: [
-        '[data-message-author-role="assistant"]',
         '[data-message-author-role="assistant"] .markdown',
-        '[data-testid="assistant-message"]',
+        '[data-message-author-role="assistant"]',
         '[data-testid="assistant-message"] .markdown',
-        '.agent-turn',
+        '[data-testid="assistant-message"]',
         '.agent-turn .markdown',
+        '.agent-turn',
         'article [data-message-author-role="assistant"] .markdown',
         'div[data-message-author-role="assistant"] .markdown',
         'div[data-message-author-role="assistant"]',
-        'article[data-testid*="conversation-turn"]',
-        'div[data-testid*="conversation-turn"]',
-        '.markdown.prose',
-        '[data-message-id]'
+        '[data-testid*="conversation-turn"]:has([data-message-author-role="assistant"])',
+        '[data-testid*="conversation-turn"]:has(button[data-testid="thumbs-up-turn-action-button"])',
+        '[data-testid*="conversation-turn"]:has(button[data-testid="read-aloud-turn-action-button"])',
+        '.markdown.prose'
       ],
       fileInputSelectors: [
         'input[type="file"][multiple]',
@@ -694,33 +694,25 @@
     }
 
     // Fallback: If no direct response selector matched, check for assistant turn containers via action buttons
+    // Thumbs-up and read-aloud buttons are exclusive to assistant responses (never user turns)
     if (nodes.length === 0) {
       const actionBtns = Array.from(
         document.querySelectorAll(
-          'button[data-testid="copy-turn-action-button"], ' +
           'button[data-testid="thumbs-up-turn-action-button"], ' +
           'button[data-testid="read-aloud-turn-action-button"], ' +
-          'button[aria-label*="Copier" i], ' +
-          'button[aria-label*="Copy" i]'
+          'button[data-testid*="thumbs-up"], ' +
+          'button[data-testid*="read-aloud"]'
         )
       );
       if (actionBtns.length > 0) {
         const foundTurns = [];
         for (const btn of actionBtns) {
-          let cur = btn.parentElement;
-          let bestContainer = null;
-          for (let d = 0; d < 8 && cur && cur.tagName !== 'MAIN' && cur.tagName !== 'BODY'; d++) {
-            const txt = (cur.innerText || cur.textContent || '').trim();
-            if (txt.length > 5) {
-              bestContainer = cur;
-              if (cur.getAttribute('data-testid') || (cur.className && String(cur.className).includes('turn'))) {
-                break;
-              }
-            }
-            cur = cur.parentElement;
-          }
-          if (bestContainer && !foundTurns.includes(bestContainer)) {
-            foundTurns.push(bestContainer);
+          const turn =
+            (typeof btn.closest === 'function' &&
+              btn.closest('[data-testid*="conversation-turn"], article, [class*="agent-turn"]')) ||
+            btn.parentElement?.parentElement;
+          if (turn && !foundTurns.includes(turn)) {
+            foundTurns.push(turn);
           }
         }
         if (foundTurns.length > 0) {
