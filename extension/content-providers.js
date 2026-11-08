@@ -135,7 +135,7 @@
           return btn;
         }
       }
-      return candidates[candidates.length - 1] || null;
+      return null;
     }
 
     return null;
@@ -407,7 +407,10 @@
         'div[contenteditable="true"]'
       ],
       sendButtonSelectors: [
-        'button[type="submit"]',
+        'div[role="button"].ds-button--circle:not(.ds-button--disabled)',
+        'div.ds-button--circle:not(.ds-button--disabled)',
+        '.ds-button--circle:not(.ds-button--disabled)',
+        'button[type="submit"]:not([disabled])',
         'div[role="button"][aria-disabled="false"][aria-label*="Send" i]',
         'div[role="button"][aria-disabled="false"][aria-label*="Envoyer" i]'
       ],

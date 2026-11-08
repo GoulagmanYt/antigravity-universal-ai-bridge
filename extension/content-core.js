@@ -185,6 +185,20 @@
     inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
   }
 
+  function isButtonDisabled(btn) {
+    if (!btn) return true;
+    if (btn.disabled || btn.hasAttribute('disabled')) return true;
+    if (btn.getAttribute('aria-disabled') === 'true') return true;
+    const classList = btn.classList;
+    if (classList) {
+      if (classList.contains('disabled') || classList.contains('ds-button--disabled')) return true;
+      for (const cls of classList) {
+        if (typeof cls === 'string' && cls.toLowerCase().includes('disabled')) return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * Triggers prompt submission via the provider's send button or Enter key event.
    * Dispatches pointerdown, mousedown, mouseup, click, and keyboard Enter for maximum SPA compatibility.
@@ -199,17 +213,18 @@
 
     let sendBtn = null;
     while (Date.now() < deadline) {
-      sendBtn = Providers.findSendButton(provider, inputEl);
-      if (sendBtn && !sendBtn.disabled && sendBtn.getAttribute('aria-disabled') !== 'true') {
-        const style = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(sendBtn) : null;
+      const candidate = Providers.findSendButton(provider, inputEl);
+      if (candidate && !isButtonDisabled(candidate)) {
+        const style = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(candidate) : null;
         if (!style || (style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0.2)) {
+          sendBtn = candidate;
           break;
         }
       }
       await sleep(150);
     }
 
-    await sleep(200);
+    await sleep(250);
 
     let sent = false;
     if (sendBtn && typeof sendBtn.click === 'function') {
@@ -223,12 +238,20 @@
         }
         sendBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, composed: true }));
         sendBtn.click();
+
+        // Also trigger on SVG icon child in case framework attaches listener internally
+        const iconChild = sendBtn.querySelector('svg, div[class*="icon"]');
+        if (iconChild && typeof iconChild.dispatchEvent === 'function') {
+          iconChild.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
+        }
+
         sent = true;
       } catch (_) {}
     }
 
     if (inputEl && typeof KeyboardEvent === 'function') {
       try {
+        if (typeof inputEl.focus === 'function') inputEl.focus();
         inputEl.dispatchEvent(new KeyboardEvent('keydown', {
           key: 'Enter',
           code: 'Enter',
