@@ -273,48 +273,94 @@
       inputSelectors: [
         '#prompt-textarea',
         'div#prompt-textarea[contenteditable="true"]',
+        'div#prompt-textarea',
+        'div.ProseMirror[contenteditable="true"]',
         'textarea[data-id="root"]',
-        'form div[contenteditable="true"]'
+        'form div[contenteditable="true"]',
+        'textarea'
       ],
       sendButtonSelectors: [
+        '#composer-submit-button',
         'button[data-testid="send-button"]',
+        'button[data-testid="fruitjuice-send-button"]',
         'button[aria-label*="Send prompt" i]',
+        'button[aria-label*="Send message" i]',
+        'button[aria-label*="Send" i]',
         'button[aria-label*="Envoyer" i]',
         'form button[type="submit"]'
       ],
       stopButtonSelectors: [
         'button[data-testid="stop-button"]',
+        '#composer-submit-button[aria-label*="Stop" i]',
+        '#composer-submit-button[aria-label*="Arrêter" i]',
         'button[aria-label*="Stop streaming" i]',
         'button[aria-label*="Stop generating" i]',
-        'button[aria-label*="Arrêter" i]'
+        'button[aria-label*="Arrêter la réponse" i]',
+        'button[aria-label*="Arrêter de générer" i]'
       ],
       streamingIndicators: [
         'button[data-testid="stop-button"]',
+        '#composer-submit-button[aria-label*="Stop" i]',
+        '#composer-submit-button[aria-label*="Arrêter" i]',
         '.result-streaming',
-        'article[data-testid*="conversation-turn"] [data-message-author-role="assistant"].result-streaming'
+        '[data-message-author-role="assistant"].result-streaming',
+        'article[data-testid*="conversation-turn"] .result-streaming'
       ],
       responseSelectors: [
+        '[data-message-author-role="assistant"]',
+        '[data-message-author-role="assistant"] .markdown',
+        '[data-testid="assistant-message"]',
+        '[data-testid="assistant-message"] .markdown',
+        '.agent-turn',
+        '.agent-turn .markdown',
         'article [data-message-author-role="assistant"] .markdown',
         'div[data-message-author-role="assistant"] .markdown',
-        'div[data-message-author-role="assistant"]'
+        'div[data-message-author-role="assistant"]',
+        'article[data-testid*="conversation-turn"]',
+        'div[data-testid*="conversation-turn"]',
+        '.markdown.prose',
+        '[data-message-id]'
       ],
       fileInputSelectors: [
         'input[type="file"][multiple]',
         'input[type="file"]'
       ],
       uploadTriggerSelectors: [
+        'button[data-testid="attach-button"]',
         'button[data-testid="composer-plus-btn"]',
         'button[aria-label*="Attach files" i]',
-        'button[aria-label*="Joindre" i]'
+        'button[aria-label*="Attach" i]',
+        'button[aria-label*="Joindre" i]',
+        'button[aria-label*="Ajouter" i]',
+        'button[aria-label*="file" i]',
+        'button[aria-label*="fichier" i]'
       ],
       attachmentChipSelectors: [
         '[data-testid*="attachment"]',
-        'form [aria-label*="Remove file" i]',
-        'form [aria-label*="Supprimer" i]'
+        '[data-testid*="file-thumbnail"]',
+        '[data-testid*="composer-file"]',
+        '.group.relative.inline-block',
+        '.attachment-preview',
+        'div[class*="attachment"]',
+        'div[class*="file-preview"]',
+        'form button[aria-label*="Remove" i]',
+        'form button[aria-label*="Supprimer" i]',
+        'button[aria-label*="Remove" i]',
+        'button[aria-label*="Supprimer" i]',
+        'button[aria-label*="Fermer" i]',
+        'button[aria-label*="Delete" i]',
+        '[aria-label*="Remove file" i]',
+        '[aria-label*="Supprimer le fichier" i]',
+        '[aria-label*="Remove" i]',
+        '[aria-label*="Supprimer" i]'
       ],
       uploadBusySelectors: [
         'form [role="progressbar"]',
-        'form svg.animate-spin'
+        'form svg.animate-spin',
+        '[data-testid*="attachment"] [role="progressbar"]',
+        '[data-testid*="attachment"] svg.animate-spin',
+        '.group.relative.inline-block [role="progressbar"]',
+        '.group.relative.inline-block svg.animate-spin'
       ],
       artifactCleanupSelectors: [
         '.flex.items-center.justify-between',
@@ -536,15 +582,23 @@
   function extractCleanResponse(containerEl, provider) {
     if (!containerEl) return '';
 
-    const clone = containerEl.cloneNode(true);
+    // If container holds an inner assistant bubble or markdown wrapper, target it
+    const assistantBubble = containerEl.querySelector
+      ? containerEl.querySelector('[data-message-author-role="assistant"], div.agent-turn, .markdown, .prose')
+      : null;
+    const target = assistantBubble || containerEl;
+    const clone = target.cloneNode(true);
 
     const cleanupSelectors = [
       'script',
       'style',
       'noscript',
       'svg',
+      'button',
+      '.code-header',
+      '[data-testid="copy-code-button"]',
+      '[data-testid="copy-turn-action-button"]',
       'button.copy-code-button',
-      '[aria-hidden="true"]',
       ...((provider && provider.artifactCleanupSelectors) || [])
     ];
 
@@ -579,7 +633,19 @@
       }
     }
 
-    const rawText = (clone.innerText !== undefined ? clone.innerText : clone.textContent) || '';
+    // Chromium: clone.innerText on a detached DOM node can evaluate to empty string ""
+    // Prioritize non-empty innerText, then non-empty textContent, then target's live innerText/textContent
+    let rawText = '';
+    if (typeof clone.innerText === 'string' && clone.innerText.trim().length > 0) {
+      rawText = clone.innerText;
+    } else if (typeof clone.textContent === 'string' && clone.textContent.trim().length > 0) {
+      rawText = clone.textContent;
+    } else if (typeof target.innerText === 'string' && target.innerText.trim().length > 0) {
+      rawText = target.innerText;
+    } else {
+      rawText = target.textContent || '';
+    }
+
     return rawText
       .replace(/\r\n/g, '\n')
       .replace(/\n{4,}/g, '\n\n\n')
@@ -607,6 +673,42 @@
         }
       } catch (_) {
         continue;
+      }
+    }
+
+    // Fallback: If no direct response selector matched, check for assistant turn containers via action buttons
+    if (nodes.length === 0) {
+      const actionBtns = Array.from(
+        document.querySelectorAll(
+          'button[data-testid="copy-turn-action-button"], ' +
+          'button[data-testid="thumbs-up-turn-action-button"], ' +
+          'button[data-testid="read-aloud-turn-action-button"], ' +
+          'button[aria-label*="Copier" i], ' +
+          'button[aria-label*="Copy" i]'
+        )
+      );
+      if (actionBtns.length > 0) {
+        const foundTurns = [];
+        for (const btn of actionBtns) {
+          let cur = btn.parentElement;
+          let bestContainer = null;
+          for (let d = 0; d < 8 && cur && cur.tagName !== 'MAIN' && cur.tagName !== 'BODY'; d++) {
+            const txt = (cur.innerText || cur.textContent || '').trim();
+            if (txt.length > 5) {
+              bestContainer = cur;
+              if (cur.getAttribute('data-testid') || (cur.className && String(cur.className).includes('turn'))) {
+                break;
+              }
+            }
+            cur = cur.parentElement;
+          }
+          if (bestContainer && !foundTurns.includes(bestContainer)) {
+            foundTurns.push(bestContainer);
+          }
+        }
+        if (foundTurns.length > 0) {
+          nodes = foundTurns;
+        }
       }
     }
 

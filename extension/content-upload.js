@@ -312,8 +312,8 @@
           dt.items.add(f);
         }
         inputEl.files = dt.files;
-        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+        inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
         return true;
       };
 
@@ -322,6 +322,11 @@
       let fileInput = Providers
         ? Providers.queryFirst(fileInputSelectors, { requireVisible: false })
         : document.querySelector('input[type="file"]');
+
+      // If file input already holds files from this active cycle, preserve it without duplicating
+      if (fileInput && fileInput.files && fileInput.files.length >= fileObjects.length) {
+        return { strategy: 'direct_file_input_preserved' };
+      }
 
       if (fileInput && tryInputFileElement(fileInput)) {
         return { strategy: 'direct_file_input' };
@@ -377,7 +382,7 @@
      * @param {object} [hooks]
      * @returns {Promise<boolean>}
      */
-    async verifyDOMAttachment(provider, expectedCount, hooks = {}) {
+    async verifyDOMAttachment(provider, expectedCount, hooks = {}, fileObjects = []) {
       this.transition(UPLOAD_STATES.VERIFYING_DOM, { expectedCount });
 
       if (typeof hooks.verifyFn === 'function') {
@@ -411,12 +416,33 @@
             return true;
           }
 
+          // 1. Visible attachment chip
           const foundChip = Providers
             ? Providers.queryFirst(chipSelectors, { requireVisible: true })
             : null;
           if (foundChip) {
             this.transition(UPLOAD_STATES.READY, { verifiedCount: expectedCount, mode: 'dom_chip' });
             return true;
+          }
+
+          // 2. Chip in DOM regardless of animation/opacity
+          const nonVisibleChip = Providers
+            ? Providers.queryFirst(chipSelectors, { requireVisible: false })
+            : null;
+          if (nonVisibleChip) {
+            this.transition(UPLOAD_STATES.READY, { verifiedCount: expectedCount, mode: 'dom_chip_any' });
+            return true;
+          }
+
+          // 3. Any uploaded file name present in composer DOM text
+          if (Array.isArray(fileObjects) && fileObjects.length > 0) {
+            const composerEl = document.querySelector('form, #prompt-textarea, [role="presentation"]') || document.body;
+            const composerText = composerEl ? (composerEl.innerText || composerEl.textContent || '') : '';
+            const anyNamePresent = fileObjects.some((f) => f && f.name && composerText.includes(f.name));
+            if (anyNamePresent) {
+              this.transition(UPLOAD_STATES.READY, { verifiedCount: expectedCount, mode: 'file_name_match' });
+              return true;
+            }
           }
         }
         await delay(200);
@@ -454,7 +480,7 @@
         const injection = await this.injectIntoDOM(fileObjects, provider, hooks);
         lastStrategy = injection.strategy;
 
-        const verified = await this.verifyDOMAttachment(provider, fileObjects.length, hooks);
+        const verified = await this.verifyDOMAttachment(provider, fileObjects.length, hooks, fileObjects);
         if (verified && this.state === UPLOAD_STATES.READY) {
           return {
             state: this.state,
@@ -467,6 +493,28 @@
         if (attempts <= this.maxRetries) {
           await delay(250 * attempts);
         }
+      }
+
+      // If injection succeeded and no busy progressbar is running, proceed with grace ready
+      // to avoid leaving files stranded in the composer
+      const busySelectors = (provider && provider.uploadBusySelectors) || [];
+      const isBusy =
+        busySelectors.length > 0 &&
+        Providers &&
+        Boolean(Providers.queryFirst(busySelectors, { requireVisible: true }));
+
+      if (lastStrategy !== 'none' && !isBusy) {
+        this.transition(UPLOAD_STATES.READY, {
+          verifiedCount: fileObjects.length,
+          mode: 'grace_proceed',
+          attempts
+        });
+        return {
+          state: this.state,
+          count: fileObjects.length,
+          strategy: lastStrategy,
+          attempts
+        };
       }
 
       const err = new Error(

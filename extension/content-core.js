@@ -152,9 +152,22 @@
    * @param {Element} inputEl
    * @returns {Promise<string>} Method used ('button_click' | 'enter_key')
    */
-  async function triggerSend(provider, inputEl) {
-    await sleep(120);
-    const sendBtn = Providers.findSendButton(provider, inputEl);
+  async function triggerSend(provider, inputEl, options = {}) {
+    const maxWaitMs = options.hasFiles ? 15000 : 2500;
+    const deadline = Date.now() + maxWaitMs;
+
+    let sendBtn = null;
+    while (Date.now() < deadline) {
+      sendBtn = Providers.findSendButton(provider, inputEl);
+      if (sendBtn && !sendBtn.disabled && sendBtn.getAttribute('aria-disabled') !== 'true') {
+        const style = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(sendBtn) : null;
+        if (!style || (style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0.2)) {
+          break;
+        }
+      }
+      await sleep(150);
+    }
+
     if (sendBtn && typeof sendBtn.click === 'function') {
       sendBtn.click();
       return 'button_click';
@@ -167,7 +180,8 @@
         keyCode: 13,
         which: 13,
         bubbles: true,
-        cancelable: true
+        cancelable: true,
+        composed: true
       });
       inputEl.dispatchEvent(enterDown);
       return 'enter_key';
@@ -550,7 +564,7 @@
 
         // Step 2: Inject prompt and trigger send
         injectPromptText(inputEl, task.prompt || '');
-        const sendMethod = await triggerSend(this.provider, inputEl);
+        const sendMethod = await triggerSend(this.provider, inputEl, { hasFiles: files.length > 0 });
 
         this.sendWs({
           id: requestId,
