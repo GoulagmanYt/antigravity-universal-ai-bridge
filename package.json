@@ -1,6 +1,6 @@
 {
   "name": "webai-bridge",
-  "version": "2.4.0-alpha.1",
+  "version": "2.4.0-alpha.2",
   "description": "Let your IDE agent delegate the hard thinking to the Web AI you already pay for (Gemini, Claude, ChatGPT, DeepSeek, AI Studio) through an MCP server and a browser extension.",
   "private": true,
   "type": "commonjs",
@@ -32,7 +32,8 @@
     "gemini",
     "claude",
     "chatgpt",
-    "deepseek"
+    "deepseek",
+    "milestone-4"
   ],
   "scripts": {
     "check": "node --check extension/bridge.mjs && node --check extension/protocol.mjs && node --check extension/session-auth.mjs && node --check extension/response-buffer.mjs && node --check extension/content-providers.js && node --check extension/content-upload.js && node --check extension/content-core.js && node --check extension/content.js && node --check extension/popup.js && node -e \"JSON.parse(require('fs').readFileSync('extension/manifest.json','utf8'));console.log('manifest ok')\"",

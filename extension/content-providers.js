@@ -184,9 +184,14 @@
       ],
       streamingIndicators: [
         'button[aria-label*="Stop response" i]',
+        'button[aria-label*="Stop generating" i]',
         'button[aria-label*="Arrêter" i]',
         'model-response [aria-busy="true"]',
+        'model-response .sparkle-container',
+        'model-response .loading-indicator',
+        'model-response loading-dots',
         'mat-progress-bar',
+        'mat-progress-spinner',
         '.response-streaming'
       ],
       responseSelectors: [
@@ -222,6 +227,10 @@
         '.file-preview-container [aria-busy="true"]'
       ],
       artifactCleanupSelectors: [
+        'user-query',
+        '.user-query-container',
+        '[data-test-id*="user-query"]',
+        '.user-query',
         'code-block-decoration',
         '.code-block-decoration',
         'button[aria-label*="Copy" i]',
@@ -653,6 +662,10 @@
       '[data-testid="user-message"]',
       '.user-message-bubble',
       '.user-turn',
+      'user-query',
+      '.user-query-container',
+      '[data-test-id*="user-query"]',
+      '.user-query',
       'details',
       '[data-testid="thought-content"]',
       '[data-testid="reasoning-summary"]',
@@ -785,8 +798,13 @@
             cur = cur.parentElement;
           }
           if (turn && !foundTurns.includes(turn)) {
-            const hasUserRole = turn.querySelector && turn.querySelector('[data-message-author-role="user"], [data-testid="user-message"]');
-            if (!hasUserRole) {
+            const isUserTurn = Boolean(
+              turn.tagName === 'USER-QUERY' ||
+              (turn.matches && turn.matches('user-query, [data-test-id*="user-query"], .user-query, [data-message-author-role="user"], [data-testid="user-message"]')) ||
+              (turn.closest && turn.closest('user-query, [data-test-id*="user-query"], .user-query, [data-message-author-role="user"], [data-testid="user-message"]')) ||
+              (turn.querySelector && turn.querySelector('user-query, [data-message-author-role="user"], [data-testid="user-message"], [data-test-id*="user-query"], .user-query'))
+            );
+            if (!isUserTurn) {
               foundTurns.push(turn);
             }
           }

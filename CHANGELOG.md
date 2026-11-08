@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requests are matched strictly by correlation id and are serialized, one prompt at a time.
 
 ### Fixed
+- Gemini Web: `<user-query>` custom elements are strictly excluded from assistant turn detection and clean response extraction, preventing prompt echo fallback while waiting for Gemini to generate. Enriched Gemini streaming indicators (`.sparkle-container`, `loading-dots`, `mat-progress-spinner`).
 - After a failed request the next call resends the full briefing instead of a delta the Web AI never received.
 - Claude: attachment detection compares against a baseline taken before the upload and is scoped to the composer; DeepSeek: selectors mapped to the actual DOM.
 - `test/live-integration.mjs` no longer contains a personal absolute path.
