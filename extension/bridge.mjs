@@ -368,7 +368,7 @@ function autoDiscoverProjectContext(projectRoot, alreadyIncludedFiles, maxChars 
     return discoveredContent;
 }
 
-const server = new Server({ name: "gemini-web-pro", version: BRIDGE_VERSION }, {
+const server = new Server({ name: "webai-bridge", version: BRIDGE_VERSION }, {
     capabilities: { tools: {} },
     instructions: MCP_INSTRUCTIONS
 });
@@ -418,7 +418,7 @@ async function handleConsultRequestUnlocked(args) {
     const isFirstCallForProject = !sessionState.initializedProjects.has(normalizedRoot);
 
     const attachments = [];
-    let promptText = `[Bridge Powered by Trignod.ai]\n\n${ORCHESTRATOR_PREAMBLE}\n\n`;
+    let promptText = `[WebAI Bridge]\n\n${ORCHESTRATOR_PREAMBLE}\n\n`;
 
     if (isFirstCallForProject) {
         const autoContext = autoDiscoverProjectContext(normalizedRoot, filePaths);

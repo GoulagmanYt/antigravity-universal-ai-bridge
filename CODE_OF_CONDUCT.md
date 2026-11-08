@@ -16,6 +16,6 @@ We want this project to be a friendly, harassment-free space for everyone, regar
 ## Enforcement
 The maintainer may edit, remove, or reject comments, commits, issues, and pull requests that violate this code, and may temporarily or permanently ban repeat offenders.
 
-Report problems by emailing **trignod.ai@gmail.com**.
+Report problems privately by contacting the maintainer on GitHub ([@GoulagmanYt](https://github.com/GoulagmanYt)).
 
 This policy is adapted from the spirit of the [Contributor Covenant](https://www.contributor-covenant.org).

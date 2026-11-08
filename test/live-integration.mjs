@@ -1,8 +1,10 @@
 import { spawn } from "child_process";
 import { WebSocket } from "ws";
 import assert from "assert/strict";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const BRIDGE_PATH = "C:\\gemini-bridge\\gemini-bridge\\extension\\bridge.mjs";
+const BRIDGE_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../extension/bridge.mjs");
 const TEST_PORT = 4546;
 
 console.log("=== STARTING LIVE END-TO-END BRIDGE TEST ===");
@@ -10,7 +12,7 @@ console.log(`Target: ${BRIDGE_PATH} on Port ${TEST_PORT}\n`);
 
 // 1. Spawn live bridge process
 const bridgeProc = spawn("node", [BRIDGE_PATH], {
-    env: { ...process.env, BRIDGE_PORT: String(TEST_PORT), BRIDGE_NO_AUTO_RULE: "1" },
+    env: { ...process.env, BRIDGE_PORT: String(TEST_PORT) },
     stdio: ["pipe", "pipe", "inherit"]
 });
 
@@ -122,7 +124,7 @@ async function runLiveTest() {
         const initResp = await sendJsonRpc("initialize", {
             protocolVersion: "2024-11-05",
             capabilities: {},
-            clientInfo: { name: "antigravity-live-test", version: "1.0.0" }
+            clientInfo: { name: "webai-bridge-live-test", version: "1.0.0" }
         });
         assert.ok(initResp.result, "MCP initialize must succeed");
         console.log(`  -> SUCCÈS: Connecté au serveur MCP ${initResp.result.serverInfo.name} v${initResp.result.serverInfo.version}\n`);

@@ -111,7 +111,7 @@ statusBtn.style.cssText = `
 
 // Restore saved pill position if exists
 try {
-    const savedPos = JSON.parse(localStorage.getItem('antigravity_pill_pos'));
+    const savedPos = JSON.parse(localStorage.getItem('webai_bridge_pill_pos'));
     if (savedPos && savedPos.left && savedPos.top) {
         statusBtn.style.left = savedPos.left;
         statusBtn.style.top = savedPos.top;
@@ -128,7 +128,7 @@ statusLabel.style.cssText = `
 `;
 
 const watermarkLabel = document.createElement('div');
-watermarkLabel.innerText = 'Powered by Trignod.ai';
+watermarkLabel.innerText = 'WebAI Bridge';
 watermarkLabel.style.cssText = `
   font-size: 10px;
   font-weight: 500;
@@ -170,7 +170,7 @@ statusBtn.addEventListener('mousedown', (e) => {
         statusBtn.style.cursor = 'grab';
         if (isDragging) {
             try {
-                localStorage.setItem('antigravity_pill_pos', JSON.stringify({
+                localStorage.setItem('webai_bridge_pill_pos', JSON.stringify({
                     left: statusBtn.style.left,
                     top: statusBtn.style.top
                 }));
@@ -185,15 +185,15 @@ statusBtn.addEventListener('mousedown', (e) => {
 function updateUI(state, detail = '') {
     const suffix = detail ? ` (${detail})` : '';
     if (state === 'standby') {
-        statusLabel.innerText = `⚪ Click to dedicate (${provider.name}) to Antigravity`;
+        statusLabel.innerText = `⚪ Click to dedicate (${provider.name}) as Orchestrator`;
         statusBtn.style.background = '#242424';
         statusBtn.style.borderColor = '#555';
     } else if (state === 'connecting') {
-        statusLabel.innerText = `🟡 Connecting (${provider.name}) to Antigravity MCP...`;
+        statusLabel.innerText = `🟡 Connecting (${provider.name}) to the MCP server...`;
         statusBtn.style.background = '#4d3800';
         statusBtn.style.borderColor = '#f5b000';
     } else if (state === 'connected') {
-        statusLabel.innerText = `🟢 (${provider.name}) Connected to Antigravity`;
+        statusLabel.innerText = `🟢 (${provider.name}) Connected as Orchestrator`;
         statusBtn.style.background = '#0d3b1e';
         statusBtn.style.borderColor = '#2ea043';
     } else if (state === 'working') {
@@ -207,10 +207,10 @@ statusBtn.addEventListener('click', () => {
     if (isDragging) return;
     isTabDedicated = !isTabDedicated;
     if (isTabDedicated) {
-        try { sessionStorage.setItem('antigravity_bridge_dedicated', 'true'); } catch (e) {}
+        try { sessionStorage.setItem('webai_bridge_dedicated', 'true'); } catch (e) {}
         connectBridge();
     } else {
-        try { sessionStorage.removeItem('antigravity_bridge_dedicated'); } catch (e) {}
+        try { sessionStorage.removeItem('webai_bridge_dedicated'); } catch (e) {}
         clearTimeout(retryTimer);
         if (ws) ws.close();
         ws = null;
@@ -220,7 +220,7 @@ statusBtn.addEventListener('click', () => {
 
 // Auto-reconnect if tab was dedicated before refresh / navigation
 try {
-    if (sessionStorage.getItem('antigravity_bridge_dedicated') === 'true') {
+    if (sessionStorage.getItem('webai_bridge_dedicated') === 'true') {
         isTabDedicated = true;
         connectBridge();
     }
@@ -247,7 +247,7 @@ function connectBridge() {
 
         if (data.type === 'replaced') {
             isTabDedicated = false;
-            try { sessionStorage.removeItem('antigravity_bridge_dedicated'); } catch (e) {}
+            try { sessionStorage.removeItem('webai_bridge_dedicated'); } catch (e) {}
             clearTimeout(retryTimer);
             updateUI('standby');
             return;

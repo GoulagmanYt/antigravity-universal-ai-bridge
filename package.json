@@ -1,34 +1,41 @@
 {
-  "name": "antigravity-universal-ai-bridge",
-  "version": "2.3.0",
-  "description": "Use the Web AI you already pay for (Gemini, Claude, ChatGPT, DeepSeek) directly inside Antigravity IDE.",
+  "name": "webai-bridge",
+  "version": "2.4.0-alpha.1",
+  "description": "Let your IDE agent delegate the hard thinking to the Web AI you already pay for (Gemini, Claude, ChatGPT, DeepSeek, AI Studio) through an MCP server and a browser extension.",
   "private": true,
   "type": "commonjs",
   "license": "GPL-3.0-or-later",
   "author": "Eyad <Trignod.ai>",
-  "homepage": "https://github.com/Eyad-Eladawy/antigravity-universal-ai-bridge",
+  "contributors": [
+    {
+      "name": "Robin (GoulagmanYt)",
+      "url": "https://github.com/GoulagmanYt"
+    }
+  ],
+  "homepage": "https://github.com/GoulagmanYt/webai-bridge",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Eyad-Eladawy/antigravity-universal-ai-bridge.git"
+    "url": "git+https://github.com/GoulagmanYt/webai-bridge.git"
   },
   "bugs": {
-    "url": "https://github.com/Eyad-Eladawy/antigravity-universal-ai-bridge/issues"
+    "url": "https://github.com/GoulagmanYt/webai-bridge/issues"
   },
   "engines": {
     "node": ">=18"
   },
   "keywords": [
-    "antigravity",
+    "webai-bridge",
     "mcp",
+    "orchestrator",
     "chrome-extension",
+    "antigravity",
     "gemini",
     "claude",
     "chatgpt",
-    "deepseek",
-    "ai-bridge"
+    "deepseek"
   ],
   "scripts": {
-    "check": "node --check extension/bridge.mjs && node --check extension/content.js && node --check extension/popup.js && node -e \"JSON.parse(require('fs').readFileSync('extension/manifest.json','utf8'));console.log('manifest ok')\"",
+    "check": "node --check extension/bridge.mjs && node --check extension/protocol.mjs && node --check extension/content.js && node --check extension/popup.js && node -e \"JSON.parse(require('fs').readFileSync('extension/manifest.json','utf8'));console.log('manifest ok')\"",
     "doctor": "node scripts/doctor.mjs",
     "test:unit": "node --test test/safety.test.mjs test/protocol.test.mjs test/protocol.e2e.test.mjs test/comparison.test.mjs",
     "test": "npm run check && npm run test:unit && npm run doctor",

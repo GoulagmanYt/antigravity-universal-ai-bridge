@@ -52,7 +52,8 @@ const consult = (args, name = "consult_orchestrator") => client.callTool({ name,
 before(async () => { await client.connect(transport); });
 after(async () => { try { tab.ws?.close(); } catch {} await client.close(); });
 
-test("server delivers the protocol as MCP instructions and lists canonical tools", async () => {
+test("server identifies as webai-bridge and delivers the protocol as MCP instructions", async () => {
+    assert.equal(client.getServerVersion().name, "webai-bridge");
     assert.match(client.getInstructions(), /EXECUTOR/);
     const names = (await client.listTools()).tools.map(t => t.name);
     assert.deepEqual(names.slice(0, 2), ["consult_orchestrator", "orchestrator_status"]);

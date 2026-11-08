@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2.4.0-alpha.1
+
+### Changed
+- **Renamed to WebAI Bridge** (`webai-bridge`). The project is a fork of antigravity-universal-ai-bridge by Eyad / Trignod.ai, see `NOTICE.md`. The MCP server now identifies itself as `webai-bridge`, and the release archive is `webai-bridge.zip`.
+- The floating button labels no longer mention Antigravity and its watermark reads "WebAI Bridge". Its saved position and per-tab dedication use new storage keys, so they reset once after upgrading.
+- `projectRoot` is now required, absolute and must exist (no more fallback to the server's working directory).
+- The global rule file `~/.gemini/GEMINI.md` is no longer written automatically. Use `node extension/bridge.mjs --install-rule` (or `BRIDGE_INSTALL_RULE=1`); the legacy block is migrated, and `--uninstall-rule` removes it. `BRIDGE_NO_AUTO_RULE` is obsolete.
+
+### Added
+- **Agent <-> Orchestrator protocol** (`extension/protocol.mjs`): the MCP `instructions` field is the single source of truth, also used for the optional rule file. Canonical tools `consult_orchestrator` and `orchestrator_status`; the former names (`consult_web_architect`, `consult_gemini_web_pro`, `get_bridge_status`) remain as deprecated aliases, hidden with `BRIDGE_HIDE_LEGACY_TOOLS=1`.
+- Replies start with a one-line header (`[orchestrator protocol=1 provider=... status=ok ...]`) and failures return `isError` with `{ code, message, retryable, action }`.
+- `response_type` (`code_changes` or `analysis`) so questions are no longer forced to produce code.
+- `--print-instructions`, `--install-rule`, `--uninstall-rule` command line flags.
+- `BRIDGE_EXTRA_ROOTS` to allow extra directories for uploads.
+- Unit and end-to-end tests for the protocol and the file access policy.
+
+### Security
+- Uploads are confined to the project root (symlinks resolved), credential files and VCS internals are refused, and files larger than 2 MB are rejected. Refusals are reported back to the calling agent.
+- Stale-process recovery only terminates a process whose command line is a bridge instance, instead of any Node.js process on the port.
+- Requests are matched strictly by correlation id and are serialized, one prompt at a time.
+
+### Fixed
+- After a failed request the next call resends the full briefing instead of a delta the Web AI never received.
+- Claude: attachment detection compares against a baseline taken before the upload and is scoped to the composer; DeepSeek: selectors mapped to the actual DOM.
+- `test/live-integration.mjs` no longer contains a personal absolute path.
+
 ## [2.3.0] - 2026-11-08
 
 ### Added

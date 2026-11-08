@@ -9,25 +9,24 @@ Thanks for wanting to help! This project is open source, and anyone can propose 
 3. Make your change and run:
    ```bash
    npm install
-   npm run check
+   npm test
    ```
 4. **Open a pull request** to `main` and fill in the template.
 5. The maintainer reviews it. You may be asked for changes. Once approved, it's merged.
 
-Direct pushes to `main` are blocked for everyone, including the maintainer.
-
 ## Guidelines
 
 - Keep PRs small and focused: one fix or feature each.
-- Test on at least one provider (Gemini, Claude, ChatGPT or DeepSeek) and say which one in the PR.
+- Test on at least one provider (Gemini, AI Studio, Claude, ChatGPT or DeepSeek) and say which one in the PR.
 - Selectors on AI sites break often. If you fix one, mention the site and date.
+- Changes to the Agent <-> Orchestrator protocol (tool names, MCP instructions, error codes) must update `extension/protocol.mjs`, its tests and the README together.
 - **Never** add secrets, personal paths, analytics/telemetry, or remote code loading. PRs that do will be closed.
 - Don't commit `node_modules/`. Releases are built by CI.
 - Match the existing code style and keep the README in sync with behavior changes.
 
 ## License of contributions
 
-By submitting a pull request, you agree that your contribution is licensed under the project's [GPL-3.0](LICENSE) license.
+By submitting a pull request, you agree that your contribution is licensed under the project's [GPL-3.0](LICENSE) license. This project is a fork, see [NOTICE.md](NOTICE.md) for the original authorship.
 
 ## Reporting bugs
 

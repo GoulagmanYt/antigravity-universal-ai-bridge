@@ -19,7 +19,7 @@ function assert(condition, message) {
     }
 }
 
-console.log("=== Antigravity Universal AI Bridge - Diagnostic Doctor ===\n");
+console.log("=== WebAI Bridge - Diagnostic Doctor ===\n");
 
 // 1. Verify required files exist
 const requiredFiles = [

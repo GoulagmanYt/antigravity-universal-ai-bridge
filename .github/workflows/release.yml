@@ -15,10 +15,10 @@ jobs:
       - run: npm ci --omit=dev
       - name: Build zip (node_modules included, no terminal needed for users)
         run: |
-          mkdir -p dist/gemini-bridge
-          cp -r extension package.json package-lock.json node_modules dist/gemini-bridge/
-          cd dist && zip -qr gemini-bridge.zip gemini-bridge
+          mkdir -p dist/webai-bridge
+          cp -r extension package.json package-lock.json node_modules dist/webai-bridge/
+          cd dist && zip -qr webai-bridge.zip webai-bridge
       - uses: softprops/action-gh-release@v3
         with:
-          files: dist/gemini-bridge.zip
+          files: dist/webai-bridge.zip
           generate_release_notes: true

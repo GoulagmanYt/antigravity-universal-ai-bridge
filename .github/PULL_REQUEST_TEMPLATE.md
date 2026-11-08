@@ -8,10 +8,10 @@
 - [ ] Refactor / chore
 
 ## How did you test it?
-<!-- Browser + provider (Gemini / Claude / ChatGPT / DeepSeek), OS, Node version -->
+<!-- Browser + provider (Gemini / AI Studio / Claude / ChatGPT / DeepSeek), OS, Node version -->
 
 ## Checklist
-- [ ] `npm run check` passes
+- [ ] `npm test` passes
 - [ ] I did not add secrets, personal paths, or tracking/telemetry
 - [ ] I updated the README/docs if behavior changed
 - [ ] I read [CONTRIBUTING.md](../CONTRIBUTING.md)

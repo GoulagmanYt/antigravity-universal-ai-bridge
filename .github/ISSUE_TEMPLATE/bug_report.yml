@@ -6,7 +6,7 @@ body:
     id: provider
     attributes:
       label: Provider
-      options: [Gemini, Claude, ChatGPT, DeepSeek, Other]
+      options: [Gemini, AI Studio, Claude, ChatGPT, DeepSeek, Other]
     validations: { required: true }
   - type: input
     id: env
