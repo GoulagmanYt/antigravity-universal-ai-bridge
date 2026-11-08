@@ -18,7 +18,7 @@
 
   const DEFAULT_BRIDGE_PORT = 8765;
   const STREAM_TICK_MS = 1200;
-  const STABILIZE_QUIET_MS = 2200;
+  const STABILIZE_QUIET_MS = 4500;
   const MAX_GENERATION_WAIT_MS = 600000; // 10 minutes max generation in tab
 
   /**

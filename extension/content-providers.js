@@ -291,20 +291,36 @@
       ],
       stopButtonSelectors: [
         'button[data-testid="stop-button"]',
+        'button[data-testid*="stop"]',
         '#composer-submit-button[aria-label*="Stop" i]',
-        '#composer-submit-button[aria-label*="Arrêter" i]',
+        '#composer-submit-button[aria-label*="Arrêt" i]',
         'button[aria-label*="Stop streaming" i]',
         'button[aria-label*="Stop generating" i]',
         'button[aria-label*="Arrêter la réponse" i]',
-        'button[aria-label*="Arrêter de générer" i]'
+        'button[aria-label*="Arrêter de générer" i]',
+        'button[aria-label*="Arrêter" i]'
       ],
       streamingIndicators: [
         'button[data-testid="stop-button"]',
+        'button[data-testid*="stop"]',
         '#composer-submit-button[aria-label*="Stop" i]',
-        '#composer-submit-button[aria-label*="Arrêter" i]',
+        '#composer-submit-button[aria-label*="Arrêt" i]',
         '.result-streaming',
         '[data-message-author-role="assistant"].result-streaming',
-        'article[data-testid*="conversation-turn"] .result-streaming'
+        'article[data-testid*="conversation-turn"] .result-streaming',
+        '[data-is-streaming="true"]'
+      ],
+      thinkingSelectors: [
+        '[data-testid="thought-content"]',
+        '[data-testid="reasoning-summary"]',
+        '[data-testid*="thought"]',
+        '[data-testid*="reasoning"]',
+        'details.group',
+        'details[open]',
+        '.thought-container',
+        '.model-thought',
+        '[class*="thought"]',
+        '[class*="reasoning"]'
       ],
       responseSelectors: [
         '[data-message-author-role="assistant"] .markdown',
@@ -603,6 +619,16 @@
       '[data-testid="user-message"]',
       '.user-message-bubble',
       '.user-turn',
+      'details',
+      '[data-testid="thought-content"]',
+      '[data-testid="reasoning-summary"]',
+      '[data-testid*="thought"]',
+      '[data-testid*="reasoning"]',
+      '.thought-container',
+      '.model-thought',
+      '.thinking-process',
+      '.ds-markdown--thought',
+      'collapsible-panel',
       ...((provider && provider.artifactCleanupSelectors) || [])
     ];
 
