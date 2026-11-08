@@ -77,8 +77,27 @@
             port: activeRuntime.port,
             busy: activeRuntime.isBusy,
             activeRequestId: activeRuntime.activeRequestId,
-            uploadState: activeRuntime.uploadMachine.state
+            uploadState: activeRuntime.uploadMachine.state,
+            debugMode: activeRuntime.debugMode,
+            logCount: (activeRuntime.debugLogs || []).length
           });
+          return true;
+        }
+
+        if (message.type === 'WEBAI_SET_DEBUG_MODE') {
+          activeRuntime.setDebugMode(message.debugMode);
+          sendResponse({ ok: true, debugMode: activeRuntime.debugMode });
+          return true;
+        }
+
+        if (message.type === 'WEBAI_GET_DEBUG_LOGS') {
+          sendResponse({ ok: true, logs: activeRuntime.getDebugLogs(message.limit || 100) });
+          return true;
+        }
+
+        if (message.type === 'WEBAI_CLEAR_DEBUG_LOGS') {
+          activeRuntime.clearDebugLogs();
+          sendResponse({ ok: true });
           return true;
         }
 
@@ -106,6 +125,9 @@
         const newToken = changes.bridgeAuthToken ? changes.bridgeAuthToken.newValue : activeRuntime.authToken;
         if (changes.bridgePort || changes.bridgeAuthToken) {
           activeRuntime.reconfigure(newPort, newToken);
+        }
+        if (changes.debugMode) {
+          activeRuntime.setDebugMode(changes.debugMode.newValue);
         }
       });
     }
@@ -141,6 +163,7 @@
     injectPromptText: Core.injectPromptText,
     triggerSend: Core.triggerSend,
     captureStreamingResponse: Core.captureStreamingResponse,
+    collectTabDiagnostics: Core.collectTabDiagnostics,
     BridgeContentRuntime: Core.BridgeContentRuntime,
     initContentBridge
   };

@@ -26,6 +26,9 @@
     const uploadStateValue = document.getElementById('uploadStateValue');
     const jobValue = document.getElementById('jobValue');
     const feedbackMsg = document.getElementById('feedbackMsg');
+    const debugToggle = document.getElementById('debugToggle');
+    const copyLogsBtn = document.getElementById('copyLogsBtn');
+    const clearLogsBtn = document.getElementById('clearLogsBtn');
 
     function setFeedback(text, isError) {
       if (!feedbackMsg) return;
@@ -80,13 +83,88 @@
 
     // Load saved settings
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['bridgePort', 'bridgeAuthToken'], (items) => {
+      chrome.storage.local.get(['bridgePort', 'bridgeAuthToken', 'debugMode'], (items) => {
         if (portInput) {
           portInput.value = validatePort(items && items.bridgePort) || DEFAULT_PORT;
         }
         if (tokenInput && items && typeof items.bridgeAuthToken === 'string') {
           tokenInput.value = items.bridgeAuthToken;
         }
+        if (debugToggle && items) {
+          debugToggle.checked = Boolean(items.debugMode);
+        }
+      });
+    }
+
+    if (debugToggle) {
+      debugToggle.addEventListener('change', () => {
+        const enabled = Boolean(debugToggle.checked);
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ debugMode: enabled }, () => {
+            setFeedback(enabled ? 'Mode Debug activé (logs détaillés)' : 'Mode Debug désactivé', false);
+            if (chrome.tabs) {
+              chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                const activeTab = tabs && tabs[0];
+                if (activeTab && activeTab.id) {
+                  chrome.tabs.sendMessage(activeTab.id, {
+                    type: 'WEBAI_SET_DEBUG_MODE',
+                    debugMode: enabled
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
+    if (copyLogsBtn) {
+      copyLogsBtn.addEventListener('click', () => {
+        if (typeof chrome === 'undefined' || !chrome.tabs) {
+          setFeedback('Extension API non disponible', true);
+          return;
+        }
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          const activeTab = tabs && tabs[0];
+          if (!activeTab || !activeTab.id) {
+            setFeedback('Aucun onglet actif', true);
+            return;
+          }
+          chrome.tabs.sendMessage(activeTab.id, { type: 'WEBAI_GET_DEBUG_LOGS' }, (res) => {
+            if (chrome.runtime && chrome.runtime.lastError) {
+              setFeedback('Onglet non compatible', true);
+              return;
+            }
+            const logs = (res && Array.isArray(res.logs)) ? res.logs : [];
+            if (logs.length === 0) {
+              setFeedback('Aucun log dans le buffer', false);
+              return;
+            }
+            const text = logs.map((l) => `[${l.iso || new Date(l.timestamp).toISOString()}] [${l.category}] [${(l.level || 'info').toUpperCase()}] ${l.message} ${l.details ? JSON.stringify(l.details) : ''}`).join('\n');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(() => {
+                setFeedback(`${logs.length} logs copiés !`, false);
+              }).catch(() => {
+                setFeedback('Erreur presse-papier', true);
+              });
+            } else {
+              setFeedback(`${logs.length} logs disponibles`, false);
+            }
+          });
+        });
+      });
+    }
+
+    if (clearLogsBtn) {
+      clearLogsBtn.addEventListener('click', () => {
+        if (typeof chrome === 'undefined' || !chrome.tabs) return;
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          const activeTab = tabs && tabs[0];
+          if (!activeTab || !activeTab.id) return;
+          chrome.tabs.sendMessage(activeTab.id, { type: 'WEBAI_CLEAR_DEBUG_LOGS' }, () => {
+            setFeedback('Buffer de logs vidé', false);
+          });
+        });
       });
     }
 

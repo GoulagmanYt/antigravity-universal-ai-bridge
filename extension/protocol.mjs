@@ -177,6 +177,26 @@ const consultSchema = {
 const statusSchema = {
     type: "object",
     properties: {
+        inspect: {
+            type: "boolean",
+            description: "When true, performs a live DOM inspection of the active Web AI tab: input element, send button, composer hierarchy, error notifications, computed styles."
+        },
+        includeLogs: {
+            type: "boolean",
+            description: "When true, returns the latest diagnostic logs from the browser extension runtime."
+        },
+        selector: {
+            type: "string",
+            description: "Optional CSS selector to query and inspect specific elements live in the active Web AI tab."
+        },
+        limitLogs: {
+            type: "number",
+            description: "Max number of recent debug logs to return (default: 50)."
+        },
+        action: {
+            type: "string",
+            description: "Optional action: 'status' (default) or 'inspect'."
+        },
         jobId: {
             type: "string",
             description: "Optional jobId returned by a previous partial_streaming response to poll/resume a long-running generation without restarting it."
@@ -197,8 +217,9 @@ const CONSULT_DESCRIPTION =
 
 const STATUS_DESCRIPTION =
     "Check whether a browser tab is connected as Orchestrator and which Web AI it is. " +
-    "Call it before the first consult if unsure, or after a NO_TAB / TAB_DISCONNECTED error. " +
-    "Returns connection status, provider and what to do if disconnected.";
+    "Can also perform live DOM inspection and retrieve verbose extension debug logs when inspect=true or includeLogs=true. " +
+    "Call it before the first consult if unsure, after errors, or to inspect the Web AI page live. " +
+    "Returns connection status, provider, DOM inspection, and what to do if disconnected.";
 
 export function getToolDefinitions({ includeLegacy = true } = {}) {
     const tools = [

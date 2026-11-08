@@ -6,6 +6,8 @@ import os from "node:os";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const ProvidersMod = require("../extension/content-providers.js");
+const CoreMod = require("../extension/content-core.js");
+import * as ProtocolMod from "../extension/protocol.mjs";
 import EventEmitter from "node:events";
 
 import {
@@ -416,4 +418,55 @@ test("Comparison 11: DeepSeek Follow-Up DOM Resolution (Zero wrong-button leakag
     // Test 4: Top-level ProvidersMod.findSendButton must return the composer send button even if disabled, and NEVER leak to warning/retry buttons
     const topLevelResolved = ProvidersMod.findSendButton(deepseek, mockTextarea1);
     assert.equal(topLevelResolved, mockSendBtnDisabled, "Top-level findSendButton must respect customResolver and not leak to global selectors");
+});
+
+test("Comparison 12: Debug Logging Ring Buffer & Live Tab Inspection Diagnostics", () => {
+    // 1. Verify BridgeContentRuntime debug logging and ring buffer
+    const runtime = new CoreMod.BridgeContentRuntime({
+        provider: ProvidersMod.PROVIDERS.deepseek,
+        debugMode: false
+    });
+
+    assert.equal(runtime.debugMode, false);
+    assert.equal(runtime.debugLogs.length, 0);
+
+    runtime.log("DOM", "info", "Composer initialized", { tag: "textarea" });
+    assert.equal(runtime.debugLogs.length, 1);
+    assert.equal(runtime.debugLogs[0].category, "DOM");
+    assert.equal(runtime.debugLogs[0].level, "info");
+    assert.equal(runtime.debugLogs[0].message, "Composer initialized");
+    assert.deepEqual(runtime.debugLogs[0].details, { tag: "textarea" });
+
+    // Test toggle
+    runtime.setDebugMode(true);
+    assert.equal(runtime.debugMode, true);
+
+    // Test ring buffer bound (without spamming test console)
+    runtime.setDebugMode(false);
+    for (let i = 0; i < 550; i++) {
+        runtime.log("TEST", "debug", `Log message ${i}`);
+    }
+    assert.equal(runtime.debugLogs.length, 500, "Ring buffer must strictly cap at 500 items");
+    assert.equal(runtime.getDebugLogs(10).length, 10);
+
+    runtime.clearDebugLogs();
+    assert.equal(runtime.debugLogs.length, 1, "clearDebugLogs logs a single clear message");
+    assert.equal(runtime.debugLogs[0].message, "Debug logs buffer cleared");
+
+    // 2. Verify collectTabDiagnostics
+    assert.equal(typeof CoreMod.collectTabDiagnostics, "function", "collectTabDiagnostics must be exported");
+    const diag = CoreMod.collectTabDiagnostics(runtime, { selector: ".test-selector", limitLogs: 5 });
+    assert.ok(diag, "Diagnostics object must be created");
+    assert.equal(diag.provider.id, "deepseek");
+    assert.ok(Array.isArray(diag.notifications));
+    assert.ok(Array.isArray(diag.matchedElements));
+    assert.ok(Array.isArray(diag.debugLogs));
+
+    // 3. Verify protocol statusSchema has new inspection parameters
+    const tools = ProtocolMod.getToolDefinitions({ includeLegacy: false });
+    const statusTool = tools.find(t => t.name === "orchestrator_status");
+    assert.ok(statusTool, "orchestrator_status must exist in tool definitions");
+    assert.ok(statusTool.inputSchema.properties.inspect, "statusSchema must define inspect");
+    assert.ok(statusTool.inputSchema.properties.includeLogs, "statusSchema must define includeLogs");
+    assert.ok(statusTool.inputSchema.properties.selector, "statusSchema must define selector");
 });

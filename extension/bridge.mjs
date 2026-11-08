@@ -467,6 +467,15 @@ async function handleConsultRequestUnlocked(args) {
         } catch (e) {}
     }
 
+    if (task === "inspect_tab" || task === "inspect" || task === "diagnostics") {
+        try {
+            const diag = await callBrowserTab("inspect_tab", { inspect: true, includeLogs: true }, 10000);
+            return { content: [{ type: "text", text: JSON.stringify(diag, null, 2) }] };
+        } catch (e) {
+            return { content: [{ type: "text", text: `Error inspecting tab: ${e.message}` }] };
+        }
+    }
+
     let chatInfo = { isEmptyChat: true, chatKey: "unknown", provider: "unknown" };
     try {
         const info = await callBrowserTab("check_session", {}, 10000);
@@ -645,6 +654,34 @@ async function handleStatusRequest(args = {}) {
     if (!browserSocket || browserSocket.readyState !== 1) {
         return { content: [{ type: "text", text: JSON.stringify(buildStatus({ connected: false, port: PORT, version: BRIDGE_VERSION }), null, 2) }] };
     }
+
+    // Live DOM inspection & debug logs retrieval if requested
+    if (args && (args.inspect || args.includeLogs || args.selector || args.action === "inspect")) {
+        try {
+            const diagnostics = await callBrowserTab("inspect_tab", {
+                inspect: Boolean(args.inspect || args.selector || args.action === "inspect"),
+                includeLogs: Boolean(args.includeLogs !== false),
+                selector: args.selector || null,
+                limitLogs: Number(args.limitLogs) || 50
+            }, 10000);
+            return {
+                content: [{
+                    type: "text",
+                    text: JSON.stringify({
+                        protocol_version: PROTOCOL_VERSION,
+                        bridge_version: BRIDGE_VERSION,
+                        connected: true,
+                        port: PORT,
+                        provider: diagnostics?.provider?.name || "unknown",
+                        diagnostics
+                    }, null, 2)
+                }]
+            };
+        } catch (err) {
+            return { content: [{ type: "text", text: JSON.stringify(buildStatus({ connected: true, port: PORT, version: BRIDGE_VERSION, error: `Diagnostics inspection failed: ${err.message}` }), null, 2) }] };
+        }
+    }
+
     try {
         const session = await callBrowserTab("check_session", {}, 5000);
         return { content: [{ type: "text", text: JSON.stringify(buildStatus({ connected: true, port: PORT, version: BRIDGE_VERSION, session }), null, 2) }] };

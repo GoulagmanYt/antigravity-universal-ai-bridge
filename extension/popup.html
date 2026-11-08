@@ -130,6 +130,57 @@
       color: var(--text);
       border: 1px solid var(--border);
     }
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--border);
+      transition: .25s;
+      border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--text);
+      transition: .25s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--accent);
+    }
+    input:checked + .slider:before {
+      transform: translateX(18px);
+      background-color: #0f172a;
+    }
+    .desc-text {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 5px;
+      line-height: 1.35;
+    }
     .status-msg {
       margin-top: 8px;
       font-size: 11px;
@@ -160,6 +211,23 @@
     <div class="row">
       <span class="label">Active Job</span>
       <span class="value" id="jobValue">None</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toggle-row">
+      <span class="label">Debug Mode (Logs Détaillés)</span>
+      <label class="switch">
+        <input type="checkbox" id="debugToggle" />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="desc-text">
+      Capture les événements DOM, boutons et requêtes en temps réel pour diagnostic immédiat.
+    </div>
+    <div class="actions" style="margin-top: 8px;">
+      <button type="button" class="secondary" id="copyLogsBtn" style="padding: 5px 8px; font-size: 11px;">Copier les logs</button>
+      <button type="button" class="secondary" id="clearLogsBtn" style="padding: 5px 8px; font-size: 11px;">Vider</button>
     </div>
   </div>
 
