@@ -315,22 +315,20 @@
     let sendMethod = null;
     if (sendBtn && typeof sendBtn.click === 'function') {
       try {
-        const evtView = typeof window !== 'undefined' ? window : null;
-        const pointerOpts = { bubbles: true, cancelable: true, composed: true, view: evtView, pointerId: 1, pointerType: 'mouse', isPrimary: true };
-        const mouseOpts = { bubbles: true, cancelable: true, composed: true, view: evtView, button: 0, buttons: 1 };
-
-        if (typeof PointerEvent === 'function') {
-          sendBtn.dispatchEvent(new PointerEvent('pointerdown', pointerOpts));
-        }
-        sendBtn.dispatchEvent(new MouseEvent('mousedown', mouseOpts));
-        if (typeof PointerEvent === 'function') {
-          sendBtn.dispatchEvent(new PointerEvent('pointerup', pointerOpts));
-        }
-        sendBtn.dispatchEvent(new MouseEvent('mouseup', mouseOpts));
         sendBtn.click();
-
         sendMethod = 'button_click';
-      } catch (_) {}
+      } catch (_) {
+        try {
+          const evtView = typeof window !== 'undefined' ? window : null;
+          sendBtn.dispatchEvent(new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            view: evtView
+          }));
+          sendMethod = 'button_click';
+        } catch (_) {}
+      }
     }
 
     // Only fallback to Enter key if no send button was located or clicked (avoids double submission)

@@ -67,12 +67,16 @@
    * @returns {Element|null}
    */
   function findDeepSeekActionElement(inputEl, roleType) {
-    if (typeof document === 'undefined') return null;
+    const docRef = (typeof document !== 'undefined' ? document : (inputEl ? inputEl.ownerDocument : null));
 
-    let composerRoot = inputEl ? (inputEl.closest('form') || inputEl.closest('[role="group"]')) : null;
+    let composerRoot = inputEl
+      ? (inputEl.closest('form') ||
+         inputEl.closest('[role="group"]') ||
+         inputEl.closest('[class*="inputFullContainer"], [class*="inputWrapper"], [class*="belowInputWrapper"], .aaff8b8f, ._77cefa5'))
+      : null;
     if (!composerRoot && inputEl) {
       let cur = inputEl.parentElement;
-      for (let i = 0; i < 15 && cur && cur !== document.body; i++) {
+      for (let i = 0; i < 15 && cur && cur !== (docRef && docRef.body); i++) {
         if (cur.querySelector && cur.querySelector('.ds-button--circle, div[role="button"].ds-button--primary, input[type="file"]')) {
           composerRoot = cur;
           break;
@@ -80,7 +84,7 @@
         cur = cur.parentElement;
       }
     }
-    if (!composerRoot) composerRoot = document.body;
+    if (!composerRoot && docRef) composerRoot = docRef.body;
 
     if (!composerRoot) return null;
 
@@ -92,7 +96,7 @@
       if (el.classList.contains('ds-toggle-button') || (typeof el.closest === 'function' && el.closest('.ds-toggle-button'))) {
         return false;
       }
-      const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      const style = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(el) : null;
       if (style && (style.display === 'none' || style.visibility === 'hidden')) return false;
       return Boolean(el.querySelector('svg'));
     });
@@ -100,7 +104,7 @@
     if (candidates.length === 0) return null;
 
     if (roleType === 'upload') {
-      const fileInput = document.querySelector('input[type="file"]');
+      const fileInput = docRef ? docRef.querySelector('input[type="file"]') : null;
       if (fileInput) {
         const labelParent = fileInput.closest('label, div[role="button"], button');
         if (labelParent) return labelParent;
@@ -110,6 +114,15 @@
         }
         const parentBtn = fileInput.parentElement?.querySelector('div[role="button"], button');
         if (parentBtn) return parentBtn;
+      }
+      for (let i = 0; i < candidates.length; i++) {
+        const btn = candidates[i];
+        if (
+          btn.classList.contains('ds-button--iconLabelPrimary') ||
+          /upload|file|fichier|joindre/i.test(btn.getAttribute('aria-label') || '')
+        ) {
+          return btn;
+        }
       }
       return candidates[0] || null;
     }
@@ -134,13 +147,24 @@
     if (roleType === 'send') {
       for (let i = candidates.length - 1; i >= 0; i--) {
         const btn = candidates[i];
-        const disabled =
-          btn.disabled ||
-          btn.getAttribute('aria-disabled') === 'true' ||
-          btn.hasAttribute('disabled') ||
-          btn.classList.contains('disabled') ||
-          btn.classList.contains('ds-button--disabled');
-        if (!disabled && isVisibleElement(btn)) {
+        // Strictly exclude upload/attachment, tertiary pills (copy/edit/speech), warning (retry), toggle
+        if (
+          btn.classList.contains('ds-button--iconLabelPrimary') ||
+          btn.classList.contains('ds-button--iconLabelTertiary') ||
+          btn.classList.contains('ds-button--warning') ||
+          btn.classList.contains('ds-toggle-button')
+        ) {
+          continue;
+        }
+
+        // Must be a valid send candidate (circle or primary action button or explicitly labeled)
+        const isSend =
+          btn.classList.contains('ds-button--circle') ||
+          btn.classList.contains('ds-button--primary') ||
+          btn.type === 'submit' ||
+          /send|envoyer|soumettre/i.test(btn.getAttribute('aria-label') || btn.getAttribute('title') || '');
+
+        if (isSend) {
           return btn;
         }
       }

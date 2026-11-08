@@ -307,3 +307,109 @@ test("Comparison 10: Gemini Follow-Up DOM Resolution (.send-icon and composer is
     const resolved = gemini.customResolver.findSendButton(mockTextarea);
     assert.equal(resolved, mockSendIconBtn, "Must resolve the send icon button inside composer, not microphone");
 });
+
+test("Comparison 11: DeepSeek Follow-Up DOM Resolution (Zero wrong-button leakage & send button isolation)", () => {
+    const deepseek = ProvidersMod.PROVIDERS.deepseek;
+    assert.ok(deepseek, "DeepSeek provider must be defined");
+    assert.equal(typeof deepseek.customResolver.findSendButton, "function", "DeepSeek customResolver.findSendButton must be a function");
+
+    // Mock DeepSeek DOM buttons in composer
+    const mockUploadBtn = {
+        tagName: "DIV",
+        role: "button",
+        classList: { contains: (cls) => cls === "ds-button" || cls === "ds-button--iconLabelPrimary" },
+        getAttribute: (attr) => attr === "role" ? "button" : (attr === "aria-label" ? "Upload files" : null),
+        querySelector: () => ({ tagName: "svg" }),
+        getBoundingClientRect: () => ({ width: 34, height: 34 })
+    };
+
+    const mockRetryBtn = {
+        tagName: "DIV",
+        role: "button",
+        classList: { contains: (cls) => cls === "ds-button" || cls === "ds-button--warning" },
+        getAttribute: (attr) => attr === "role" ? "button" : (attr === "aria-label" ? "Regenerate" : null),
+        querySelector: () => ({ tagName: "svg" }),
+        getBoundingClientRect: () => ({ width: 24, height: 24 })
+    };
+
+    const mockCopyBtn = {
+        tagName: "DIV",
+        role: "button",
+        classList: { contains: (cls) => cls === "ds-button" || cls === "ds-button--iconLabelTertiary" },
+        getAttribute: (attr) => attr === "role" ? "button" : (attr === "aria-label" ? "Copy" : null),
+        querySelector: () => ({ tagName: "svg" }),
+        getBoundingClientRect: () => ({ width: 24, height: 24 })
+    };
+
+    const mockSendBtnDisabled = {
+        tagName: "DIV",
+        role: "button",
+        classList: { contains: (cls) => cls === "ds-button" || cls === "ds-button--circle" || cls === "ds-button--primary" || cls === "ds-button--disabled" },
+        getAttribute: (attr) => attr === "role" ? "button" : (attr === "aria-disabled" ? "true" : null),
+        querySelector: () => ({ tagName: "svg" }),
+        getBoundingClientRect: () => ({ width: 34, height: 34 })
+    };
+
+    const mockSendBtnEnabled = {
+        tagName: "DIV",
+        role: "button",
+        classList: { contains: (cls) => cls === "ds-button" || cls === "ds-button--circle" || cls === "ds-button--primary" },
+        getAttribute: (attr) => attr === "role" ? "button" : (attr === "aria-disabled" ? "false" : null),
+        querySelector: () => ({ tagName: "svg" }),
+        getBoundingClientRect: () => ({ width: 34, height: 34 })
+    };
+
+    const mockComposerWithDisabledSend = {
+        tagName: "DIV",
+        className: "belowInputWrapper",
+        querySelectorAll: () => [mockRetryBtn, mockCopyBtn, mockUploadBtn, mockSendBtnDisabled],
+        querySelector: () => mockSendBtnDisabled
+    };
+
+    const mockComposerWithEnabledSend = {
+        tagName: "DIV",
+        className: "belowInputWrapper",
+        querySelectorAll: () => [mockRetryBtn, mockCopyBtn, mockUploadBtn, mockSendBtnEnabled],
+        querySelector: () => mockSendBtnEnabled
+    };
+
+    const mockComposerWithOnlyUpload = {
+        tagName: "DIV",
+        className: "belowInputWrapper",
+        querySelectorAll: () => [mockRetryBtn, mockCopyBtn, mockUploadBtn],
+        querySelector: () => mockUploadBtn
+    };
+
+    const mockTextarea1 = {
+        tagName: "TEXTAREA",
+        name: "search",
+        closest: (sel) => sel.includes("belowInputWrapper") ? mockComposerWithDisabledSend : null,
+        parentElement: mockComposerWithDisabledSend
+    };
+
+    const mockTextarea2 = {
+        tagName: "TEXTAREA",
+        name: "search",
+        closest: (sel) => sel.includes("belowInputWrapper") ? mockComposerWithEnabledSend : null,
+        parentElement: mockComposerWithEnabledSend
+    };
+
+    const mockTextarea3 = {
+        tagName: "TEXTAREA",
+        name: "search",
+        closest: (sel) => sel.includes("belowInputWrapper") ? mockComposerWithOnlyUpload : null,
+        parentElement: mockComposerWithOnlyUpload
+    };
+
+    // Test 1: Even if send button is currently disabled in state, it MUST return the send button, NEVER the upload/retry/copy buttons
+    const resolvedDisabled = deepseek.customResolver.findSendButton(mockTextarea1);
+    assert.equal(resolvedDisabled, mockSendBtnDisabled, "Must return the circle send button, even if currently disabled");
+
+    // Test 2: When enabled, it returns the circle send button
+    const resolvedEnabled = deepseek.customResolver.findSendButton(mockTextarea2);
+    assert.equal(resolvedEnabled, mockSendBtnEnabled, "Must return the enabled circle send button");
+
+    // Test 3: If no send button exists, it must return null and NEVER leak upload/retry/copy buttons
+    const resolvedLeakage = deepseek.customResolver.findSendButton(mockTextarea3);
+    assert.equal(resolvedLeakage, null, "Must return null and never click upload or retry buttons when send button is absent");
+});
