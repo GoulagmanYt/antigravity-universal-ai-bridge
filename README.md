@@ -7,6 +7,7 @@
 
 **Stop paying twice for AI. Connect your IDE agent directly to your flat-rate Claude, ChatGPT, Gemini, and DeepSeek web subscriptions via MCP — $0 API token cost, native file uploads, zero copy-paste.**
 
+[![GitHub Stars](https://img.shields.io/github/stars/GoulagmanYt/webai-bridge?style=flat-square&logo=github&color=F59E0B)](https://github.com/GoulagmanYt/webai-bridge/stargazers)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](LICENSE)
 [![CI Status](https://img.shields.io/github/actions/workflow/status/GoulagmanYt/webai-bridge/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/GoulagmanYt/webai-bridge/actions)
 [![Release](https://img.shields.io/github/v/release/GoulagmanYt/webai-bridge?style=flat-square&color=10B981)](https://github.com/GoulagmanYt/webai-bridge/releases/latest)
@@ -105,7 +106,7 @@ DeepSeek has unified its architecture into the **DeepSeek V4 / V4.1** generation
 
 ### 📊 Frontier Web Models Matrix
 
-| Plateforme Web | Modèle Raisonnement / Flagship | Modèle Code / Quotidien | Modèle Rapide / Léger | Contexte Max |
+| Web Platform | Reasoning / Flagship Model | Daily Coding Model | Fast / Lightweight Model | Max Context |
 |---|---|---|---|:---:|
 | **Claude** | Claude Opus 5.5 / Fable 5.1 | Claude Sonnet 5.5 | Claude Haiku 5.5 | **1M tokens** |
 | **Gemini & AI Studio** | Gemini 4 Argon / 3.1 Pro | Gemini 3.8 Flash | Gemini 3.5 Flash-Lite | **1M tokens** |
@@ -279,7 +280,7 @@ The protocol definition lives in [`extension/protocol.mjs`](extension/protocol.m
 ### Structured Reply Format
 Successful replies begin with an envelope header followed by the Orchestrator's structured output:
 
-```text
+````text
 [orchestrator protocol=1 provider=Claude status=ok response_type=code_changes files_sent=3 files_unchanged=0 files_refused=1]
 [refused] .env (sensitive file (credentials, keys or VCS internals))
 
@@ -287,7 +288,7 @@ FILE: /path/to/project/src/auth.ts
 ```ts
 // Full rewritten code
 ```
-```
+````
 
 The IDE Executor strictly parses `FILE: <path>` blocks, applies modifications only inside `projectRoot`, and runs test suites to verify.
 
