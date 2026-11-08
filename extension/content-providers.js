@@ -599,6 +599,10 @@
       '[data-testid="copy-code-button"]',
       '[data-testid="copy-turn-action-button"]',
       'button.copy-code-button',
+      '[data-message-author-role="user"]',
+      '[data-testid="user-message"]',
+      '.user-message-bubble',
+      '.user-turn',
       ...((provider && provider.artifactCleanupSelectors) || [])
     ];
 
@@ -645,6 +649,19 @@
     } else {
       rawText = target.textContent || '';
     }
+
+    // Strip user message prefix if ancestor container captured the full turn
+    if (rawText.includes('ChatGPT a dit :')) {
+      const parts = rawText.split('ChatGPT a dit :');
+      rawText = parts[parts.length - 1];
+    } else if (rawText.includes('ChatGPT said :')) {
+      const parts = rawText.split('ChatGPT said :');
+      rawText = parts[parts.length - 1];
+    } else if (rawText.includes('ChatGPT said:')) {
+      const parts = rawText.split('ChatGPT said:');
+      rawText = parts[parts.length - 1];
+    }
+    rawText = rawText.replace(/^ChatGPT\s*/i, '');
 
     return rawText
       .replace(/\r\n/g, '\n')
