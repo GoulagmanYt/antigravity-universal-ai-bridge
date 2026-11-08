@@ -13,10 +13,10 @@ jobs:
         with:
           node-version: 20
       - run: npm ci --omit=dev
-      - name: Build zip (node_modules included, no terminal needed for users)
+      - name: Build zip (node_modules and skills included, no terminal needed for users)
         run: |
           mkdir -p dist/webai-bridge
-          cp -r extension package.json package-lock.json node_modules dist/webai-bridge/
+          cp -r extension package.json package-lock.json node_modules skills dist/webai-bridge/
           cd dist && zip -qr webai-bridge.zip webai-bridge
       - uses: softprops/action-gh-release@v3
         with:

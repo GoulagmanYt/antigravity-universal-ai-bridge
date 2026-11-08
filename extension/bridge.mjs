@@ -8,11 +8,11 @@ import os from "os";
 import crypto from "crypto";
 import { execSync, execFileSync } from "child_process";
 import {
-    MCP_INSTRUCTIONS, ORCHESTRATOR_PREAMBLE, TOOL_CONSULT, TOOL_STATUS,
+    MCP_INSTRUCTIONS, ORCHESTRATOR_PREAMBLE, ORCHESTRATOR_ROLE_BRIEFING, TOOL_CONSULT, TOOL_STATUS,
     bridgeError, codedError, codeFromError, classifyTabFailure,
     buildEnvelope, buildOrchestratorFooter, buildStatus, getToolDefinitions,
     resolveToolName, validateConsultArgs, readBridgeVersion,
-    detectRuleState, installRule, uninstallRule
+    detectRuleState, installRule, uninstallRule, installSkill
 } from "./protocol.mjs";
 import { SessionAuthManager } from "./session-auth.mjs";
 import { ResponseBufferManager, JOB_STATUS } from "./response-buffer.mjs";
@@ -496,6 +496,7 @@ async function handleConsultRequestUnlocked(args) {
     if (isFirstCallForProject) {
         const autoContext = autoDiscoverProjectContext(normalizedRoot, filePaths);
         const fullBriefing =
+            `=== 0. MASTER ORCHESTRATOR ROLE & OPERATING CONTRACT ===\n${ORCHESTRATOR_ROLE_BRIEFING}\n\n` +
             `=== 1. INITIAL SESSION BRIEFING & CONTEXT ===\n${conversation_history_and_context}\n\n` +
             (autoContext ? `=== 2. PROJECT MEMORY, PROGRESS & SKILLS ===\n${autoContext}\n` : "");
 
@@ -507,8 +508,10 @@ async function handleConsultRequestUnlocked(args) {
                 content: fullBriefing,
                 mimeType: "text/markdown"
             });
-            promptText += `=== 1. INITIAL SESSION BRIEFING & PROJECT CONTEXT ===\n` +
-                          `Refer to attached file "00_PROJECT_CONTEXT_AND_BRIEFING.md" for the full project architecture, briefing, and repository memory.\n\n`;
+            promptText += `=== 0. MASTER ORCHESTRATOR MANDATE & OPERATING RULES ===\n` +
+                          `Autonomous Collaboration: Work exclusively with the Executor without human interruption. Loop back until task is finished. Conclude with TASK_COMPLETE.\n\n` +
+                          `=== 1. INITIAL SESSION BRIEFING & PROJECT CONTEXT ===\n` +
+                          `Refer to attached file "00_PROJECT_CONTEXT_AND_BRIEFING.md" for the full project architecture, master orchestrator mandate, briefing, and repository memory.\n\n`;
         } else {
             promptText += `${fullBriefing}\n`;
         }
@@ -843,8 +846,13 @@ function runCli(argv) {
         console.log(`Global rule ${r.action}: ${r.path}`);
         return 0;
     }
+    if (argv.includes("--install-skill")) {
+        const r = installSkill({ metaUrl: import.meta.url });
+        console.log(`Orchestrator skill ${r.action}: ${r.path}`);
+        return 0;
+    }
     if (argv.includes("--help") || argv.includes("-h")) {
-        console.log("Usage: node bridge.mjs [--print-instructions | --install-rule | --uninstall-rule]\nWithout flags, starts the MCP server on stdio.");
+        console.log("Usage: node bridge.mjs [--print-instructions | --install-rule | --uninstall-rule | --install-skill]\nWithout flags, starts the MCP server on stdio.");
         return 0;
     }
     return null;

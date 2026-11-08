@@ -189,9 +189,10 @@ Open **Manage MCPs → View raw config** (`mcp_config.json`) and add:
 ```
 *(Update `D:/webai-bridge` to your actual installation path).* Save and click **Refresh**.
 
-**Optional (Agent Instructions):** To mirror the bridge protocol rules directly in `~/.gemini/GEMINI.md`:
+**Optional (Agent Rule & Skill Setup):** To mirror the bridge protocol rules directly in `~/.gemini/GEMINI.md` and install the orchestration skill:
 ```bash
 node D:/webai-bridge/extension/bridge.mjs --install-rule
+node D:/webai-bridge/extension/bridge.mjs --install-skill
 ```
 </details>
 
@@ -240,6 +241,32 @@ Add to `cline_mcp_settings.json`:
 }
 ```
 </details>
+
+### Step 4: Install the Autonomous Orchestrator Skill (Recommended)
+
+To guarantee that your IDE agent operates in a **100% autonomous, unbroken closed loop** (applying code, executing tests, reporting results back to the web orchestrator, never interrupting the human, and looping until `TASK_COMPLETE`):
+
+#### Automatic Installation (One command)
+Run from your installation folder:
+```bash
+node D:/webai-bridge/extension/bridge.mjs --install-skill
+```
+
+#### Manual Skill Installation
+Copy the bundled `skills/webai-orchestrator` folder into your agent's skills location:
+
+* **Antigravity IDE**:
+  * Windows (PowerShell):
+    ```powershell
+    Copy-Item -Path "D:\webai-bridge\skills\webai-orchestrator" -Destination "$env:USERPROFILE\.gemini\config\skills\" -Recurse -Force
+    ```
+  * Linux / macOS:
+    ```bash
+    cp -r D:/webai-bridge/skills/webai-orchestrator ~/.gemini/config/skills/
+    ```
+
+* **Claude Code / Cursor / Other Agents**:
+  Copy `skills/webai-orchestrator` into your project's `.agents/skills/webai-orchestrator` or `.cursor/skills/`.
 
 ---
 
