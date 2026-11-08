@@ -658,7 +658,24 @@ function findAssistantResponses() {
 
 function extractCleanResponse(element) {
     if (!element) return "";
-    const clone = element.cloneNode(true);
+
+    // If the element is a turn container holding an inner assistant message bubble, focus directly on it
+    const assistantBubble = element.querySelector ? element.querySelector('[data-message-author-role="assistant"], div.agent-turn, .markdown, .prose') : null;
+    const target = assistantBubble || element;
+    const clone = target.cloneNode(true);
+
+    // Remove user message sections if ancestor captured full turn
+    const userSelectors = [
+        '[data-message-author-role="user"]',
+        '[data-testid="user-message"]',
+        '.user-message-bubble',
+        '.user-turn',
+        'h5',
+        'h6'
+    ];
+    for (const sel of userSelectors) {
+        clone.querySelectorAll(sel).forEach(el => el.remove());
+    }
 
     // Remove thinking / reasoning accordions from Gemini, Claude, DeepSeek, ChatGPT
     const thoughtSelectors = [
@@ -689,7 +706,9 @@ function extractCleanResponse(element) {
         clone.querySelectorAll(sel).forEach(el => el.remove());
     }
 
-    return clone.innerText.trim();
+    let cleaned = clone.innerText.trim();
+    cleaned = cleaned.replace(/^(?:ChatGPT|Claude|Gemini|Assistant)\s+a\s+dit\s*:\s*/i, "");
+    return cleaned.trim();
 }
 
 async function askWebProvider(text, attachments = []) {
