@@ -1,7 +1,7 @@
 {
   "name": "webai-bridge",
   "version": "2.4.0-alpha.2",
-  "description": "Let your IDE agent delegate the hard thinking to the Web AI you already pay for (Gemini, Claude, ChatGPT, DeepSeek, AI Studio) through an MCP server and a browser extension.",
+  "description": "Zero-Token MCP Orchestrator. Let your IDE agent delegate the hard thinking to the Web AI you already pay for (Claude, Gemini, ChatGPT, DeepSeek, AI Studio) with $0 API cost, native file uploads, and zero copy-paste.",
   "private": true,
   "type": "commonjs",
   "license": "GPL-3.0-or-later",
@@ -26,14 +26,19 @@
   "keywords": [
     "webai-bridge",
     "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "orchestrator",
-    "chrome-extension",
+    "ai-coding",
+    "cursor",
+    "claude-code",
     "antigravity",
+    "chrome-extension",
+    "zero-token",
     "gemini",
     "claude",
     "chatgpt",
-    "deepseek",
-    "milestone-4"
+    "deepseek"
   ],
   "scripts": {
     "check": "node --check extension/bridge.mjs && node --check extension/protocol.mjs && node --check extension/session-auth.mjs && node --check extension/response-buffer.mjs && node --check extension/content-providers.js && node --check extension/content-upload.js && node --check extension/content-core.js && node --check extension/content.js && node --check extension/popup.js && node -e \"JSON.parse(require('fs').readFileSync('extension/manifest.json','utf8'));console.log('manifest ok')\"",
