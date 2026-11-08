@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import crypto from "crypto";
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
 
 const MANDATORY_RULE = `
 # MANDATORY SYSTEM OVERRIDE: CONTEXT GATHERER & EXECUTOR FOR consult_gemini_web_pro (Powered by Trignod.ai)
@@ -115,26 +115,100 @@ function setupProcessLifecycle(transport) {
     }
 }
 
+/**
+ * Parses `netstat -ano -p tcp` output and returns the PID listening on `port`, or null.
+ * Language-independent: a listening socket has a foreign address ending in ":0".
+ */
+function parseListeningPid(netstatOutput, port, selfPid = process.pid) {
+    for (const line of String(netstatOutput).split(/\r?\n/)) {
+        const cols = line.trim().split(/\s+/);
+        if (cols.length < 5) continue;
+        const [proto, local, foreign, , pid] = cols;
+        if (!/^TCP/i.test(proto) || !foreign.endsWith(":0")) continue;
+        if (!local.endsWith(`:${port}`)) continue;
+        if (!/^\d+$/.test(pid) || pid === String(selfPid)) continue;
+        return pid;
+    }
+    return null;
+}
+
+/**
+ * Windows only. Terminates a stale bridge instance holding the port, but ONLY if the owning
+ * process command line contains "bridge.mjs". Never kills unrelated Node.js processes.
+ */
 function tryKillStaleBridgeOnPort(port) {
+    if (process.platform !== "win32") return false;
     try {
-        if (process.platform === "win32") {
-            const out = execSync(`netstat -ano | findstr :${port}`, { encoding: "utf8", timeout: 2000 });
-            const lines = out.split("\n").filter(l => l.includes("LISTENING"));
-            for (const line of lines) {
-                const parts = line.trim().split(/\s+/);
-                const pid = parts[parts.length - 1];
-                if (pid && pid !== String(process.pid)) {
-                    const procInfo = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, { encoding: "utf8", timeout: 2000 });
-                    if (procInfo.toLowerCase().includes("node.exe")) {
-                        console.error(`[Bridge Auto-Recovery] Terminating stale node process PID ${pid} on port ${pid}...`);
-                        execSync(`taskkill /F /PID ${pid}`, { timeout: 2000 });
-                        return true;
-                    }
-                }
-            }
+        const out = execFileSync("netstat", ["-ano", "-p", "tcp"], { encoding: "utf8", timeout: 3000 });
+        const pid = parseListeningPid(out, port);
+        if (!pid) return false;
+        const cmd = execFileSync(
+            "powershell",
+            ["-NoProfile", "-NonInteractive", "-Command",
+             `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}").CommandLine`],
+            { encoding: "utf8", timeout: 5000 }
+        );
+        if (!/bridge\.mjs/i.test(cmd)) {
+            console.error(`[Bridge] Port ${port} is held by PID ${pid}, which is not a bridge instance. Not terminating it.`);
+            return false;
         }
-    } catch (e) {}
-    return false;
+        console.error(`[Bridge Auto-Recovery] Terminating stale bridge PID ${pid} on port ${port}...`);
+        execFileSync("taskkill", ["/F", "/PID", pid], { timeout: 3000 });
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// File access policy: only files inside projectRoot (or BRIDGE_EXTRA_ROOTS) can be uploaded
+// to a third-party Web AI, and never credentials / key material.
+// ---------------------------------------------------------------------------
+const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
+const SENSITIVE_DIRS = new Set([".git", ".ssh", ".aws", ".gnupg", ".azure", ".kube"]);
+const SENSITIVE_NAME = /^(\.env(\..*)?|\.npmrc|\.netrc|\.pypirc|id_(rsa|dsa|ecdsa|ed25519).*|.*\.(pem|key|p12|pfx|kdbx|keystore)|credentials(\.[a-z]+)?|secrets?(\.[a-z]+)?)$/i;
+
+function isSensitiveRelPath(relPath) {
+    const parts = String(relPath).split(/[\\/]+/).filter(Boolean);
+    if (parts.length === 0) return false;
+    if (parts.slice(0, -1).some(p => SENSITIVE_DIRS.has(p.toLowerCase()))) return true;
+    return SENSITIVE_NAME.test(parts[parts.length - 1]);
+}
+
+function getAllowedRoots(projectRoot) {
+    const roots = [projectRoot];
+    if (process.env.BRIDGE_EXTRA_ROOTS) {
+        roots.push(...process.env.BRIDGE_EXTRA_ROOTS.split(path.delimiter).filter(Boolean));
+    }
+    const real = [];
+    for (const r of roots) {
+        try { real.push(fs.realpathSync(path.resolve(r))); } catch (e) {}
+    }
+    return real;
+}
+
+/**
+ * Resolves a file requested by the agent. Relative paths are resolved against projectRoot.
+ * Returns { ok: true, path } or { ok: false, reason } (symlinks are resolved before checking).
+ */
+function resolveSafeFile(projectRoot, filePath) {
+    let real;
+    try {
+        real = fs.realpathSync(path.resolve(projectRoot, filePath));
+    } catch (e) {
+        return { ok: false, reason: "file not found" };
+    }
+    const owner = getAllowedRoots(projectRoot).find(root => {
+        const rel = path.relative(root, real);
+        return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+    });
+    if (!owner) return { ok: false, reason: "outside projectRoot" };
+    if (isSensitiveRelPath(path.relative(owner, real))) return { ok: false, reason: "sensitive file (credentials, keys or VCS internals)" };
+    let st;
+    try { st = fs.statSync(real); } catch (e) { return { ok: false, reason: "unreadable" }; }
+    if (!st.isFile()) return { ok: false, reason: "not a regular file" };
+    if (st.size > MAX_ATTACHMENT_BYTES) return { ok: false, reason: `larger than ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB` };
+    return { ok: true, path: real };
 }
 
 let sessionState = {
@@ -201,7 +275,7 @@ function callBrowserTab(type, payload = {}, timeoutMs = 300000) {
         const onMessage = (data) => {
             try {
                 const msg = JSON.parse(data.toString());
-                if (msg.id === id || (!msg.id && msg.type === type) || (!msg.id && type === "prompt" && msg.reply !== undefined)) {
+                if (msg.id === id) {
                     cleanup();
                     if (msg.error) {
                         reject(new Error(msg.error));
@@ -269,8 +343,9 @@ function autoDiscoverProjectContext(projectRoot, alreadyIncludedFiles, maxChars 
 
     for (const fileName of rootContextFiles) {
         if (totalChars >= maxChars) break;
-        const fullPath = path.resolve(projectRoot, fileName);
-        if (fs.existsSync(fullPath) && !normalizedIncluded.has(fullPath)) {
+        const resolved = resolveSafeFile(projectRoot, fileName);
+        const fullPath = resolved.ok ? resolved.path : path.resolve(projectRoot, fileName);
+        if (resolved.ok && !normalizedIncluded.has(fullPath)) {
             try {
                 const content = fs.readFileSync(fullPath, "utf8").slice(0, 12000);
                 const block = `\n--- [AUTO-CONTEXT] ${fileName} ---\n${content}\n`;
@@ -295,7 +370,7 @@ function autoDiscoverProjectContext(projectRoot, alreadyIncludedFiles, maxChars 
                     if (entry.name !== "node_modules" && entry.name !== ".git") {
                         scanDir(fullPath, depth + 1);
                     }
-                } else if (/\.(md|txt|mdc|json|yaml|yml)$/i.test(entry.name) && !normalizedIncluded.has(fullPath)) {
+                } else if (/\.(md|txt|mdc|json|yaml|yml)$/i.test(entry.name) && !normalizedIncluded.has(fullPath) && !isSensitiveRelPath(path.relative(projectRoot, fullPath))) {
                     const stat = fs.statSync(fullPath);
                     if (stat.size <= 25000) {
                         const relPath = path.relative(projectRoot, fullPath);
@@ -371,7 +446,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     ]
 }));
 
-async function handleConsultRequest(args) {
+let tabQueue = Promise.resolve();
+function withTabLock(task) {
+    const run = tabQueue.then(task, task);
+    tabQueue = run.catch(() => {});
+    return run;
+}
+
+function handleConsultRequest(args) {
+    return withTabLock(() => handleConsultRequestUnlocked(args));
+}
+
+async function handleConsultRequestUnlocked(args) {
     if (!browserSocket || browserSocket.readyState !== 1) {
         return { content: [{ type: "text", text: "Error: No browser tab is currently connected. Please click the floating button on Gemini, Claude, ChatGPT, or DeepSeek to dedicate a tab. (Powered by Trignod.ai)" }] };
     }
@@ -435,36 +521,41 @@ async function handleConsultRequest(args) {
     }
 
     const manifestLines = [];
+    const refused = [];
     let fileIndex = 0;
 
     for (const filePath of filePaths) {
-        const fullPath = path.resolve(filePath);
-        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
-            const content = fs.readFileSync(fullPath, "utf8");
-            const currentHash = getHash(content);
-            const previousHash = sessionState.sentFileHashes.get(fullPath);
+        const resolved = resolveSafeFile(normalizedRoot, filePath);
+        if (!resolved.ok) {
+            manifestLines.push(`- [REFUSED: ${resolved.reason}] ${filePath}`);
+            refused.push(`${filePath} (${resolved.reason})`);
+            continue;
+        }
+        const fullPath = resolved.path;
+        const content = fs.readFileSync(fullPath, "utf8");
+        const currentHash = getHash(content);
+        const previousHash = sessionState.sentFileHashes.get(fullPath);
 
-            if (isFirstCallForProject || previousHash !== currentHash) {
-                const attachmentName = toSafeAttachmentName(normalizedRoot, fullPath, fileIndex++);
-                const headerWrappedContent =
-                    `// ============================================================================\n` +
-                    `// TARGET WORKSPACE FILE: ${fullPath}\n` +
-                    `// ATTACHMENT NAME: ${attachmentName}\n` +
-                    `// ============================================================================\n\n` +
-                    content;
+        if (isFirstCallForProject || previousHash !== currentHash) {
+            const attachmentName = toSafeAttachmentName(normalizedRoot, fullPath, fileIndex++);
+            const headerWrappedContent =
+                `// ============================================================================\n` +
+                `// TARGET WORKSPACE FILE: ${fullPath}\n` +
+                `// ATTACHMENT NAME: ${attachmentName}\n` +
+                `// ============================================================================\n\n` +
+                content;
 
-                attachments.push({
-                    name: attachmentName,
-                    originalPath: fullPath,
-                    content: headerWrappedContent,
-                    mimeType: "text/plain"
-                });
+            attachments.push({
+                name: attachmentName,
+                originalPath: fullPath,
+                content: headerWrappedContent,
+                mimeType: "text/plain"
+            });
 
-                manifestLines.push(`- [ATTACHED FILE: "${attachmentName}"] -> Absolute Path: ${fullPath} (${content.length} chars, COMPLETE & UNTRUNCATED)`);
-                sessionState.sentFileHashes.set(fullPath, currentHash);
-            } else {
-                manifestLines.push(`- [UNCHANGED IN THIS CHAT] -> Absolute Path: ${fullPath}`);
-            }
+            manifestLines.push(`- [ATTACHED FILE: "${attachmentName}"] -> Absolute Path: ${fullPath} (${content.length} chars, COMPLETE & UNTRUNCATED)`);
+            sessionState.sentFileHashes.set(fullPath, currentHash);
+        } else {
+            manifestLines.push(`- [UNCHANGED IN THIS CHAT] -> Absolute Path: ${fullPath}`);
         }
     }
 
@@ -483,7 +574,10 @@ async function handleConsultRequest(args) {
             attachments
         }, 660000);
         const replyText = typeof reply === "string" ? reply : (reply.reply || JSON.stringify(reply));
-        return { content: [{ type: "text", text: replyText }] };
+        const refusedNote = refused.length > 0
+            ? `[Bridge notice] ${refused.length} file(s) were NOT sent to the Web AI: ${refused.join("; ")}\n\n`
+            : "";
+        return { content: [{ type: "text", text: refusedNote + replyText }] };
     } catch (err) {
         return { content: [{ type: "text", text: `Error from Web AI Bridge: ${err.message}` }] };
     }
@@ -588,5 +682,9 @@ export {
     MANDATORY_RULE,
     ALLOWED_ORIGINS,
     PORT,
-    startServer
+    startServer,
+    resolveSafeFile,
+    isSensitiveRelPath,
+    parseListeningPid,
+    withTabLock
 };
