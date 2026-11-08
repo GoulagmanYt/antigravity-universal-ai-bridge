@@ -29,7 +29,8 @@ const PROVIDERS = {
         stopBtn: 'button[aria-label*="Stop" i], button[aria-label*="Arrêter" i], [data-is-streaming="true"]',
         attachmentBtn: 'button[aria-label*="Upload" i], button[aria-label*="Attach" i], button[aria-label*="Ajouter" i], button[aria-label*="Add content" i]',
         fileInput: 'input[type="file"][data-testid="file-upload"], input[type="file"]',
-        attachmentChip: '[data-testid*="file"], .file-thumbnail, [aria-label*="Remove" i], [aria-label*="Supprimer" i], div[class*="FileThumbnail"]',
+        attachmentChip: '[data-testid="file-thumbnail"], [data-testid*="file-thumbnail"], .file-thumbnail, button[aria-label*="Remove" i], [aria-label*="Supprimer" i], div[class*="FileThumbnail"]',
+        scopeChipsToComposer: true,
         maxFilesPerTurn: 15
     },
     "chatgpt.com": {
@@ -361,6 +362,43 @@ function findElementDeep(selector, root = document) {
 }
 
 /**
+ * Returns the composer container (fieldset/form) around the editor, or document as fallback.
+ */
+function getComposerRoot(editor) {
+    return (editor && (editor.closest('fieldset') || editor.closest('form'))) || document;
+}
+
+/**
+ * Picks the most plausible <input type="file"> for documents (not camera / image-only inputs).
+ * Prefers inputs located inside the composer, then any other candidate.
+ */
+function pickFileInput(selector, composerRoot) {
+    const all = [];
+    const collect = (root) => {
+        if (!root || !root.querySelectorAll) return;
+        root.querySelectorAll(selector).forEach(el => all.push(el));
+        root.querySelectorAll('*').forEach(el => { if (el.shadowRoot) collect(el.shadowRoot); });
+    };
+    collect(document);
+    if (all.length === 0) return null;
+
+    const inputs = all.filter(el => el.tagName === 'INPUT');
+    const pool = inputs.length > 0 ? inputs : all;
+    const imageOnly = /^\s*image\/[^,]*(\s*,\s*image\/[^,]*)*\s*$/i;
+    const usable = pool.filter(el => {
+        if (el.hasAttribute && el.hasAttribute('capture')) return false;
+        const accept = (el.getAttribute && el.getAttribute('accept')) || '';
+        return !(accept && imageOnly.test(accept));
+    });
+    const candidates = usable.length > 0 ? usable : pool;
+    if (composerRoot && composerRoot !== document) {
+        const inComposer = candidates.find(el => composerRoot.contains(el));
+        if (inComposer) return inComposer;
+    }
+    return candidates[0];
+}
+
+/**
  * Builds browser File objects and a populated DataTransfer container.
  */
 function buildDataTransfer(attachments) {
@@ -387,21 +425,29 @@ async function uploadAttachmentsToDOM(editor, rawAttachments) {
 
     const dt = buildDataTransfer(attachments);
 
+    const composerRoot = getComposerRoot(editor);
+    const chipScope = () => (provider.scopeChipsToComposer ? composerRoot : document);
+    const queryChips = () => provider.attachmentChip
+        ? Array.from(chipScope().querySelectorAll(provider.attachmentChip))
+        : [];
+
+    // Baseline taken BEFORE any upload attempt: only chips that appear afterwards count,
+    // otherwise pre-existing matches (history, sidebar, "Remove" buttons) give false positives.
+    const baselineChips = queryChips().length;
+
     const hasAttachmentChips = () => {
         if (!provider.attachmentChip) return false;
-        const chips = Array.from(document.querySelectorAll(provider.attachmentChip));
-        if (chips.length >= attachments.length) {
-            const isUploading = chips.some(c => c.querySelector('[role="progressbar"], .animate-spin'));
-            return !isUploading;
-        }
-        return false;
+        const chips = queryChips();
+        if (chips.length < baselineChips + attachments.length) return false;
+        const isUploading = chips.some(c => c.querySelector('[role="progressbar"], .animate-spin'));
+        return !isUploading;
     };
 
     console.log(`[Bridge] Attaching ${attachments.length} file(s) to ${provider.name}...`);
     statusLabel.innerText = `🔵 Attaching ${attachments.length} file(s)...`;
 
     // Strategy 1: Locate or trigger <input type="file"> (supports Shadow DOM boundaries)
-    let fileInput = findElementDeep(provider.fileInput || 'input[type="file"]');
+    let fileInput = pickFileInput(provider.fileInput || 'input[type="file"]', composerRoot);
 
     // If file input not immediately in DOM, click attachment / plus button to mount it
     if (!fileInput && provider.attachmentBtn) {
@@ -410,7 +456,7 @@ async function uploadAttachmentsToDOM(editor, rawAttachments) {
             try {
                 attachBtn.click();
                 await new Promise(r => setTimeout(r, 350));
-                fileInput = findElementDeep(provider.fileInput || 'input[type="file"]');
+                fileInput = pickFileInput(provider.fileInput || 'input[type="file"]', composerRoot);
             } catch (e) {}
         }
     }
@@ -438,6 +484,7 @@ async function uploadAttachmentsToDOM(editor, rawAttachments) {
     // Strategy 2: Synthetic Drag & Drop with composed: true on editor / container
     try {
         const dropTargets = [
+            composerRoot !== document ? composerRoot : null,
             findElementDeep('rich-textarea'),
             findElementDeep('.input-area'),
             findElementDeep('div[contenteditable="true"]'),
@@ -802,6 +849,7 @@ async function askWebProvider(text, attachments = []) {
 
             const latestResponse = extractCleanResponse(targetElement);
 
+            // Once streaming and thinking have stopped, wait for text stabilization
             if (!isStillStreaming && !isThinking && latestResponse.length > 0 && latestResponse === lastText) {
                 stableCount++;
                 if (stableCount >= 3) {
