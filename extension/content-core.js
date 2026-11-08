@@ -100,22 +100,51 @@
     const tag = (inputEl.tagName || '').toLowerCase();
 
     if (tag === 'textarea' || tag === 'input') {
-      const proto = tag === 'textarea'
-        ? (typeof HTMLTextAreaElement !== 'undefined' ? HTMLTextAreaElement.prototype : null)
-        : (typeof HTMLInputElement !== 'undefined' ? HTMLInputElement.prototype : null);
-      const nativeSetter =
-        proto && Object.getOwnPropertyDescriptor(proto, 'value')
-          ? Object.getOwnPropertyDescriptor(proto, 'value').set
-          : null;
-
-      if (nativeSetter) {
-        nativeSetter.call(inputEl, promptText);
-      } else {
-        inputEl.value = promptText;
+      if (typeof inputEl.select === 'function') {
+        inputEl.select();
       }
 
-      inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-      inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+      let inserted = false;
+      if (typeof document !== 'undefined' && typeof document.execCommand === 'function') {
+        try {
+          inserted = document.execCommand('insertText', false, promptText);
+        } catch (_) {
+          inserted = false;
+        }
+      }
+
+      if (!inserted || inputEl.value !== promptText) {
+        if (inputEl._valueTracker && typeof inputEl._valueTracker.setValue === 'function') {
+          inputEl._valueTracker.setValue('');
+        }
+        const proto = tag === 'textarea'
+          ? (typeof HTMLTextAreaElement !== 'undefined' ? HTMLTextAreaElement.prototype : null)
+          : (typeof HTMLInputElement !== 'undefined' ? HTMLInputElement.prototype : null);
+        const nativeSetter =
+          proto && Object.getOwnPropertyDescriptor(proto, 'value')
+            ? Object.getOwnPropertyDescriptor(proto, 'value').set
+            : null;
+
+        if (nativeSetter) {
+          nativeSetter.call(inputEl, promptText);
+        } else {
+          inputEl.value = promptText;
+        }
+
+        if (typeof InputEvent === 'function') {
+          try {
+            inputEl.dispatchEvent(new InputEvent('input', {
+              bubbles: true,
+              cancelable: true,
+              composed: true,
+              inputType: 'insertText',
+              data: promptText
+            }));
+          } catch (_) {}
+        }
+        inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+      }
       return;
     }
 
@@ -229,20 +258,24 @@
     let sent = false;
     if (sendBtn && typeof sendBtn.click === 'function') {
       try {
+        const evtView = typeof window !== 'undefined' ? window : null;
+        const pointerOpts = { bubbles: true, cancelable: true, composed: true, view: evtView, pointerId: 1, pointerType: 'mouse', isPrimary: true };
+        const mouseOpts = { bubbles: true, cancelable: true, composed: true, view: evtView, button: 0, buttons: 1 };
+
         if (typeof PointerEvent === 'function') {
-          sendBtn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, composed: true }));
+          sendBtn.dispatchEvent(new PointerEvent('pointerdown', pointerOpts));
         }
-        sendBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, composed: true }));
+        sendBtn.dispatchEvent(new MouseEvent('mousedown', mouseOpts));
         if (typeof PointerEvent === 'function') {
-          sendBtn.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, composed: true }));
+          sendBtn.dispatchEvent(new PointerEvent('pointerup', pointerOpts));
         }
-        sendBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, composed: true }));
+        sendBtn.dispatchEvent(new MouseEvent('mouseup', mouseOpts));
         sendBtn.click();
 
-        // Also trigger on SVG icon child in case framework attaches listener internally
-        const iconChild = sendBtn.querySelector('svg, div[class*="icon"]');
+        // Also trigger on SVG / path / icon child in case framework attaches listener internally
+        const iconChild = sendBtn.querySelector('svg, path, div[class*="icon"], div[class*="background"]');
         if (iconChild && typeof iconChild.dispatchEvent === 'function') {
-          iconChild.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
+          iconChild.dispatchEvent(new MouseEvent('click', mouseOpts));
         }
 
         sent = true;
@@ -252,7 +285,7 @@
     if (inputEl && typeof KeyboardEvent === 'function') {
       try {
         if (typeof inputEl.focus === 'function') inputEl.focus();
-        inputEl.dispatchEvent(new KeyboardEvent('keydown', {
+        const keyOpts = {
           key: 'Enter',
           code: 'Enter',
           keyCode: 13,
@@ -260,16 +293,10 @@
           bubbles: true,
           cancelable: true,
           composed: true
-        }));
-        inputEl.dispatchEvent(new KeyboardEvent('keyup', {
-          key: 'Enter',
-          code: 'Enter',
-          keyCode: 13,
-          which: 13,
-          bubbles: true,
-          cancelable: true,
-          composed: true
-        }));
+        };
+        inputEl.dispatchEvent(new KeyboardEvent('keydown', keyOpts));
+        inputEl.dispatchEvent(new KeyboardEvent('keypress', keyOpts));
+        inputEl.dispatchEvent(new KeyboardEvent('keyup', keyOpts));
         sent = true;
       } catch (_) {}
     }

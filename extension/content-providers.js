@@ -69,9 +69,18 @@
   function findDeepSeekActionElement(inputEl, roleType) {
     if (typeof document === 'undefined') return null;
 
-    const composerRoot =
-      (inputEl && (inputEl.closest('form') || inputEl.closest('[role="group"]') || inputEl.parentElement?.parentElement?.parentElement)) ||
-      document.body;
+    let composerRoot = inputEl ? (inputEl.closest('form') || inputEl.closest('[role="group"]')) : null;
+    if (!composerRoot && inputEl) {
+      let cur = inputEl.parentElement;
+      for (let i = 0; i < 15 && cur && cur !== document.body; i++) {
+        if (cur.querySelector && cur.querySelector('.ds-button--circle, div[role="button"].ds-button--primary, input[type="file"]')) {
+          composerRoot = cur;
+          break;
+        }
+        cur = cur.parentElement;
+      }
+    }
+    if (!composerRoot) composerRoot = document.body;
 
     if (!composerRoot) return null;
 
@@ -402,14 +411,18 @@
       // Strict hash-free semantic & structural selectors
       inputSelectors: [
         'textarea#chat-input',
+        'textarea[name="search"]',
+        'textarea[placeholder*="DeepSeek" i]',
         'textarea[placeholder]',
+        'textarea._27c9245',
         'div[role="textbox"][contenteditable="true"]',
         'div[contenteditable="true"]'
       ],
       sendButtonSelectors: [
         'div[role="button"].ds-button--circle:not(.ds-button--disabled)',
-        'div.ds-button--circle:not(.ds-button--disabled)',
+        'div[role="button"].ds-button--primary:not(.ds-button--disabled)',
         '.ds-button--circle:not(.ds-button--disabled)',
+        '.ds-button--primary:not(.ds-button--disabled)',
         'button[type="submit"]:not([disabled])',
         'div[role="button"][aria-disabled="false"][aria-label*="Send" i]',
         'div[role="button"][aria-disabled="false"][aria-label*="Envoyer" i]'
