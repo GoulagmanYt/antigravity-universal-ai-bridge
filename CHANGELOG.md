@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2.4.0-alpha.1
+## [2.4.0] - 2026-11-08
 
 ### Changed
 - **Renamed to WebAI Bridge** (`webai-bridge`). The project is a fork of antigravity-universal-ai-bridge by Eyad / Trignod.ai, see `NOTICE.md`. The MCP server now identifies itself as `webai-bridge`, and the release archive is `webai-bridge.zip`.
@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requests are matched strictly by correlation id and are serialized, one prompt at a time.
 
 ### Fixed
+- DeepSeek: hash-free selectors mapped to real DOM, strictly isolated send button resolver, elimination of multi-event click duplication, and prevention of fallback leakage to chat history buttons.
+- ChatGPT: prioritized markdown containers, robust ProseMirror view dispatch, and thinking container filtering.
+- Duplicate submission prevention: eliminated redundant Enter key events on successful button click dispatch across all providers.
 - Gemini Web: `<user-query>` custom elements are strictly excluded from assistant turn detection and clean response extraction, preventing prompt echo fallback while waiting for Gemini to generate. Enriched Gemini streaming indicators (`.sparkle-container`, `loading-dots`, `mat-progress-spinner`).
 - After a failed request the next call resends the full briefing instead of a delta the Web AI never received.
 - Claude: attachment detection compares against a baseline taken before the upload and is scoped to the composer; DeepSeek: selectors mapped to the actual DOM.

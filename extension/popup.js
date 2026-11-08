@@ -101,7 +101,7 @@
         const enabled = Boolean(debugToggle.checked);
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
           chrome.storage.local.set({ debugMode: enabled }, () => {
-            setFeedback(enabled ? 'Mode Debug activé (logs détaillés)' : 'Mode Debug désactivé', false);
+            setFeedback(enabled ? 'Debug mode enabled (detailed logs)' : 'Debug mode disabled', false);
             if (chrome.tabs) {
               chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                 const activeTab = tabs && tabs[0];
@@ -121,34 +121,34 @@
     if (copyLogsBtn) {
       copyLogsBtn.addEventListener('click', () => {
         if (typeof chrome === 'undefined' || !chrome.tabs) {
-          setFeedback('Extension API non disponible', true);
+          setFeedback('Extension API not available', true);
           return;
         }
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           const activeTab = tabs && tabs[0];
           if (!activeTab || !activeTab.id) {
-            setFeedback('Aucun onglet actif', true);
+            setFeedback('No active tab found', true);
             return;
           }
           chrome.tabs.sendMessage(activeTab.id, { type: 'WEBAI_GET_DEBUG_LOGS' }, (res) => {
             if (chrome.runtime && chrome.runtime.lastError) {
-              setFeedback('Onglet non compatible', true);
+              setFeedback('Unsupported tab', true);
               return;
             }
             const logs = (res && Array.isArray(res.logs)) ? res.logs : [];
             if (logs.length === 0) {
-              setFeedback('Aucun log dans le buffer', false);
+              setFeedback('No logs in buffer', false);
               return;
             }
             const text = logs.map((l) => `[${l.iso || new Date(l.timestamp).toISOString()}] [${l.category}] [${(l.level || 'info').toUpperCase()}] ${l.message} ${l.details ? JSON.stringify(l.details) : ''}`).join('\n');
             if (navigator.clipboard && navigator.clipboard.writeText) {
               navigator.clipboard.writeText(text).then(() => {
-                setFeedback(`${logs.length} logs copiés !`, false);
+                setFeedback(`${logs.length} logs copied!`, false);
               }).catch(() => {
-                setFeedback('Erreur presse-papier', true);
+                setFeedback('Clipboard error', true);
               });
             } else {
-              setFeedback(`${logs.length} logs disponibles`, false);
+              setFeedback(`${logs.length} logs available`, false);
             }
           });
         });
@@ -162,7 +162,7 @@
           const activeTab = tabs && tabs[0];
           if (!activeTab || !activeTab.id) return;
           chrome.tabs.sendMessage(activeTab.id, { type: 'WEBAI_CLEAR_DEBUG_LOGS' }, () => {
-            setFeedback('Buffer de logs vidé', false);
+            setFeedback('Log buffer cleared', false);
           });
         });
       });

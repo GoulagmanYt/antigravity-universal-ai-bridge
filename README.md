@@ -23,41 +23,41 @@
   <img src="https://img.shields.io/badge/Google_AI_Studio-Gemini_4_Argon_|_3.1_Pro-EA4335?style=flat-square&logo=google" alt="AI Studio">
 </p>
 
-[⚡ Quickstart (30s)](#-quickstart-in-30-seconds) · [🥊 Why WebAI Bridge?](#-why-webai-bridge) · [🧠 Frontier Models](#-supported-frontier-models) · [📐 Architecture](#-how-it-works) · [🔒 Security FAQ](#-security-privacy--anti-ban-faq) · [📦 Releases](https://github.com/GoulagmanYt/webai-bridge/releases/latest)
+[Quickstart (30s)](#quickstart-in-30-seconds) · [Why WebAI Bridge?](#why-webai-bridge) · [Frontier Models](#supported-frontier-models-november-2026-lineup) · [Architecture](#how-it-works) · [Security FAQ](#security-privacy--anti-ban-faq) · [Releases](https://github.com/GoulagmanYt/webai-bridge/releases/latest)
 
 </div>
 
 ---
 
-## 🥊 Why WebAI Bridge?
+## Why WebAI Bridge?
 
-### 💸 The Double-Billing Trap
+### The Double-Billing Trap
 As developers, we already pay **$20 to $40/month** for subscriptions like **Claude Pro**, **ChatGPT Plus**, or **Gemini Advanced**. 
 
 Yet, when using coding agents inside editors (Antigravity IDE, Cursor, Claude Code, Cline, Roo Code), we are forced to **pay again on a per-token API meter** — burning $10 to $50+ on a single deep debugging session or architecture redesign.
 
 **WebAI Bridge eliminates this dilemma.** It lets your local IDE agent delegate the hard thinking to your logged-in web browser tab over the official **Model Context Protocol (MCP)**.
 
-### 🎭 Fixed Two-Agent Architecture
+### Fixed Two-Agent Architecture
 * **Executor (Local IDE Agent):** Runs in your editor. Gathers local context, invokes tests, inspects syntax, and applies code edits.
 * **Orchestrator (Browser Web AI):** Runs in your browser. Acts as the Chief Architect. Solves hard reasoning, plans multi-file structures, and crafts complete solutions.
 
 ---
 
-## ⚡ Comparison: Why It Wins
+## Comparison: Why It Wins
 
-| Feature | Manual Copy-Paste | IDE Pay-Per-Token API | 🚀 WebAI Bridge |
+| Feature | Manual Copy-Paste | IDE Pay-Per-Token API | WebAI Bridge |
 |---|:---:|:---:|:---:|
-| **Token Cost** | $0 (included in sub) | **💸 $10 – $100+ / week** | **🎉 $0 (uses your existing flat-rate sub)** |
-| **Project File Upload** | Tedious, manual, truncated | Automated, but paid per token | **⚡ Native browser DataTransfer / File API** |
-| **Context Management** | Painful manual re-pasting | Full re-read costs token fees | **🧠 Git-aware 60k delta tracking** |
-| **Secrets Protection** | High human error risk | Depends on client config | **🛡️ Automatic firewall: refuses `.env` & credentials** |
-| **Code Application** | Copy-paste file-by-file | Auto-applied in editor | **⚡ Auto-applied to workspace + auto test runs** |
-| **Frontier Models** | Instant web availability | Wait for API access & pay tiers | **✨ Instant Day-0 access to all latest models** |
+| **Token Cost** | $0 (included in sub) | **$10 – $100+ / week** | **$0 (uses your existing flat-rate sub)** |
+| **Project File Upload** | Tedious, manual, truncated | Automated, but paid per token | **Native browser DataTransfer / File API** |
+| **Context Management** | Painful manual re-pasting | Full re-read costs token fees | **Git-aware 60k delta tracking** |
+| **Secrets Protection** | High human error risk | Depends on client config | **Automatic firewall: refuses `.env` & credentials** |
+| **Code Application** | Copy-paste file-by-file | Auto-applied in editor | **Auto-applied to workspace + auto test runs** |
+| **Frontier Models** | Instant web availability | Wait for API access & pay tiers | **Instant Day-0 access to all latest models** |
 
 ---
 
-## 🎬 Show, Don't Tell (10-Second Demo)
+## Quick Demo
 
 ```
 [ IDE Split-Screen: Antigravity / Cursor ]              [ Browser Tab: Claude Opus 5.5 / GPT-6 Astra / DeepSeek V4-Pro ]
@@ -72,7 +72,7 @@ Yet, when using coding agents inside editors (Antigravity IDE, Cursor, Claude Co
 
 ---
 
-## 🧠 Supported Frontier Models (November 2026 Lineup)
+## Supported Frontier Models (November 2026 Lineup)
 
 WebAI Bridge connects directly to whatever model is selected in your open browser tab. In November 2026, the frontier AI landscape has unified around **multimodality, 1M+ token context windows, and adjustable Thinking tiers**. Because WebAI Bridge interacts with your real browser session, **any new model, reasoning level, or preview launched on these platforms is supported on Day 0 with zero extension updates:**
 
@@ -104,7 +104,7 @@ DeepSeek has unified its architecture into the **DeepSeek V4 / V4.1** generation
 
 ---
 
-### 📊 Frontier Web Models Matrix
+### Frontier Web Models Matrix
 
 | Web Platform | Reasoning / Flagship Model | Daily Coding Model | Fast / Lightweight Model | Max Context |
 |---|---|---|---|:---:|
@@ -118,18 +118,18 @@ DeepSeek has unified its architecture into the **DeepSeek V4 / V4.1** generation
 
 ---
 
-## 📐 How It Works
+## How It Works
 
 ```mermaid
 flowchart LR
-    subgraph Local["💻 Local Machine (Trusted Boundary)"]
-        IDE["⚡ IDE Agent (Executor)<br/>Antigravity · Cursor · Claude Code"]
-        MCP["🛡️ Local MCP Server<br/>ws://localhost:4545<br/>Firewalls .env · 60k Git Delta Budget"]
+    subgraph Local["Local Machine (Trusted Boundary)"]
+        IDE["IDE Agent (Executor)<br/>Antigravity · Cursor · Claude Code"]
+        MCP["Local MCP Server<br/>ws://localhost:4545<br/>Firewalls .env · 60k Git Delta Budget"]
     end
 
-    subgraph Browser["🌐 Chrome Browser (Flat-Rate Subscriptions)"]
-        EXT["🔌 WebAI Bridge Extension<br/>Native DataTransfer & File API"]
-        WEB["🧠 Web AI Tab (Orchestrator)<br/>Claude · ChatGPT · DeepSeek · Gemini"]
+    subgraph Browser["Chrome Browser (Flat-Rate Subscriptions)"]
+        EXT["WebAI Bridge Extension<br/>Native DataTransfer & File API"]
+        WEB["Web AI Tab (Orchestrator)<br/>Claude · ChatGPT · DeepSeek · Gemini"]
     end
 
     IDE -- "1. consult_orchestrator" --> MCP
@@ -142,7 +142,7 @@ flowchart LR
 
 ---
 
-## ⚡ Quickstart in 30 Seconds
+## Quickstart in 30 Seconds
 
 ### Step 1: Get the Package
 Download `webai-bridge.zip` from the [latest release](https://github.com/GoulagmanYt/webai-bridge/releases/latest) and unzip it into a permanent folder (e.g. `D:/webai-bridge` or `~/webai-bridge`).  
@@ -243,7 +243,7 @@ Add to `cline_mcp_settings.json`:
 
 ---
 
-## 🚦 Daily Workflow
+## Daily Workflow
 
 1. Open your AI website of choice in Chrome:
    * [claude.ai](https://claude.ai)
@@ -251,22 +251,22 @@ Add to `cline_mcp_settings.json`:
    * [chat.deepseek.com](https://chat.deepseek.com)
    * [gemini.google.com](https://gemini.google.com)
    * [aistudio.google.com](https://aistudio.google.com)
-2. Click the floating button at the top of the tab until it turns **🟢 Green**.
+2. Click the floating button at the top of the tab until it turns **Green**.
 3. Prompt your IDE agent naturally — it delegates the heavy lifting autonomously!
 
 | Indicator | Status | Action |
 |:---:|---|---|
-| ⚪ **White** | **Standby** | Click once to dedicate this tab as active Orchestrator. |
-| 🟢 **Green** | **Connected** | Active & ready! Tab will handle requests. |
-| 🔵 **Blue** | **Processing** | Files uploaded, generating thinking & code. |
-| 🟡 **Yellow** | **Connecting** | IDE has not launched the MCP server yet or port is waiting. |
+| **White** | **Standby** | Click once to dedicate this tab as active Orchestrator. |
+| **Green** | **Connected** | Active & ready! Tab will handle requests. |
+| **Blue** | **Processing** | Files uploaded, generating thinking & code. |
+| **Yellow** | **Connecting** | IDE has not launched the MCP server yet or port is waiting. |
 
 > [!TIP]
 > **Need a clean slate?** Open a **New Chat** in the web tab. WebAI Bridge automatically detects new conversations and sends fresh context bundles!
 
 ---
 
-## 🛡️ Agent Protocol Specification
+## Agent Protocol Specification
 
 The protocol definition lives in [`extension/protocol.mjs`](extension/protocol.mjs) and is served via the standard MCP `instructions` capability.
 
@@ -306,7 +306,7 @@ The IDE Executor strictly parses `FILE: <path>` blocks, applies modifications on
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 | Environment Variable | Default | Purpose |
 |---|:---:|---|
@@ -317,7 +317,7 @@ The IDE Executor strictly parses `FILE: <path>` blocks, applies modifications on
 
 ---
 
-## 🔒 Security, Privacy & Anti-Ban FAQ
+## Security, Privacy & Anti-Ban FAQ
 
 ### Can my Claude / ChatGPT / Gemini account get banned?
 **No.** WebAI Bridge does not use reverse-engineered endpoints, private auth tokens, or headless scrapers (Puppeteer/Playwright) which Cloudflare flags. It operates as an extension inside your authentic, everyday browser session at a normal human pace (a few architectural queries per hour).
@@ -336,7 +336,7 @@ The IDE Executor strictly parses `FILE: <path>` blocks, applies modifications on
 
 ---
 
-## 📜 License & Credits
+## License & Credits
 
 Released under the **[GNU General Public License v3.0](LICENSE)**.
 
