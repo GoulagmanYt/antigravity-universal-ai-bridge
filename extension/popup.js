@@ -1,40 +1,155 @@
-const SUPPORTED_HOSTS = {
-  "gemini.google.com": "Google Gemini",
-  "aistudio.google.com": "Google AI Studio",
-  "claude.ai": "Claude",
-  "chatgpt.com": "ChatGPT",
-  "chat.openai.com": "ChatGPT",
-  "chat.deepseek.com": "DeepSeek"
-};
+/**
+ * WebAI Bridge - Popup Controller
+ * Manages WebSocket port configuration, per-session authentication token storage,
+ * and live status inspection of the active Web AI tab.
+ */
+(function () {
+  'use strict';
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const statusBadge = document.getElementById("tab-status");
-  const statusText = document.getElementById("tab-status-text");
-  const providerLabel = document.getElementById("tab-provider");
+  const DEFAULT_PORT = 8765;
 
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.url) {
-      statusText.innerText = "No tab active";
-      providerLabel.innerText = "Open a supported AI tab below.";
-      return;
-    }
-
-    const url = new URL(tab.url);
-    const matchedHost = Object.keys(SUPPORTED_HOSTS).find(host => url.hostname.includes(host));
-
-    if (matchedHost) {
-      statusBadge.className = "badge badge-connected";
-      statusText.innerText = "Supported Tab";
-      providerLabel.innerText = `${SUPPORTED_HOSTS[matchedHost]} tab is active. Click the floating badge on page to dedicate!`;
-    } else {
-      statusBadge.className = "badge badge-standby";
-      statusText.innerText = "Not on AI Tab";
-      providerLabel.innerText = "Navigate to a supported AI site below.";
-    }
-  } catch (e) {
-    statusText.innerText = "Ready";
-    providerLabel.innerText = "Open a supported AI tab to begin.";
+  function validatePort(value) {
+    const num = Number(value);
+    return Number.isInteger(num) && num >= 1024 && num <= 65535 ? num : null;
   }
-});
 
+  function initPopup() {
+    if (typeof document === 'undefined') return;
+
+    const portInput = document.getElementById('portInput');
+    const tokenInput = document.getElementById('tokenInput');
+    const saveBtn = document.getElementById('saveBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const providerValue = document.getElementById('providerValue');
+    const uploadStateValue = document.getElementById('uploadStateValue');
+    const jobValue = document.getElementById('jobValue');
+    const feedbackMsg = document.getElementById('feedbackMsg');
+
+    function setFeedback(text, isError) {
+      if (!feedbackMsg) return;
+      feedbackMsg.textContent = text;
+      feedbackMsg.style.color = isError ? '#ef4444' : '#38bdf8';
+    }
+
+    function updateStatusUI(status) {
+      if (!status || !status.ok) {
+        statusDot.className = 'dot disconnected';
+        statusText.textContent = 'Unsupported Tab';
+        providerValue.textContent = 'None';
+        uploadStateValue.textContent = 'IDLE';
+        jobValue.textContent = 'None';
+        return;
+      }
+
+      providerValue.textContent = status.providerName || status.provider || 'Detected';
+      uploadStateValue.textContent = status.uploadState || 'IDLE';
+      jobValue.textContent = status.activeRequestId || 'Idle';
+
+      if (status.connected) {
+        statusDot.className = status.busy ? 'dot busy' : 'dot connected';
+        statusText.textContent = status.busy ? 'Streaming...' : `Connected (:${status.port})`;
+      } else {
+        statusDot.className = 'dot disconnected';
+        statusText.textContent = `Offline (:${status.port || DEFAULT_PORT})`;
+      }
+    }
+
+    function queryActiveTabStatus() {
+      if (typeof chrome === 'undefined' || !chrome.tabs) return;
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = tabs && tabs[0];
+        if (!activeTab || !activeTab.id) {
+          updateStatusUI(null);
+          return;
+        }
+        try {
+          chrome.tabs.sendMessage(activeTab.id, { type: 'WEBAI_GET_TAB_STATUS' }, (response) => {
+            if (chrome.runtime && chrome.runtime.lastError) {
+              updateStatusUI(null);
+              return;
+            }
+            updateStatusUI(response);
+          });
+        } catch (_) {
+          updateStatusUI(null);
+        }
+      });
+    }
+
+    // Load saved settings
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['bridgePort', 'bridgeAuthToken'], (items) => {
+        if (portInput) {
+          portInput.value = validatePort(items && items.bridgePort) || DEFAULT_PORT;
+        }
+        if (tokenInput && items && typeof items.bridgeAuthToken === 'string') {
+          tokenInput.value = items.bridgeAuthToken;
+        }
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        const validPort = validatePort(portInput ? portInput.value : DEFAULT_PORT);
+        if (!validPort) {
+          setFeedback('Port must be between 1024 and 65535', true);
+          return;
+        }
+        const authToken = tokenInput ? tokenInput.value.trim() : '';
+
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set(
+            {
+              bridgePort: validPort,
+              bridgeAuthToken: authToken
+            },
+            () => {
+              setFeedback(`Saved port ${validPort} & reconnecting...`, false);
+              if (chrome.tabs) {
+                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                  const activeTab = tabs && tabs[0];
+                  if (activeTab && activeTab.id) {
+                    chrome.tabs.sendMessage(
+                      activeTab.id,
+                      {
+                        type: 'WEBAI_RECONFIGURE_BRIDGE',
+                        port: validPort,
+                        authToken
+                      },
+                      () => {
+                        setTimeout(queryActiveTabStatus, 350);
+                      }
+                    );
+                  }
+                });
+              }
+            }
+          );
+        }
+      });
+    }
+
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        setFeedback('Status refreshed', false);
+        queryActiveTabStatus();
+      });
+    }
+
+    queryActiveTabStatus();
+  }
+
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPopup, { once: true });
+    } else {
+      initPopup();
+    }
+  }
+
+  if (typeof module === 'object' && module.exports) {
+    module.exports = { DEFAULT_PORT, validatePort };
+  }
+})();

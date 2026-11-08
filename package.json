@@ -35,9 +35,9 @@
     "deepseek"
   ],
   "scripts": {
-    "check": "node --check extension/bridge.mjs && node --check extension/protocol.mjs && node --check extension/content.js && node --check extension/popup.js && node -e \"JSON.parse(require('fs').readFileSync('extension/manifest.json','utf8'));console.log('manifest ok')\"",
+    "check": "node --check extension/bridge.mjs && node --check extension/protocol.mjs && node --check extension/session-auth.mjs && node --check extension/response-buffer.mjs && node --check extension/content-providers.js && node --check extension/content-upload.js && node --check extension/content-core.js && node --check extension/content.js && node --check extension/popup.js && node -e \"JSON.parse(require('fs').readFileSync('extension/manifest.json','utf8'));console.log('manifest ok')\"",
     "doctor": "node scripts/doctor.mjs",
-    "test:unit": "node --test test/safety.test.mjs test/protocol.test.mjs test/protocol.e2e.test.mjs test/comparison.test.mjs",
+    "test:unit": "node --test test/safety.test.mjs test/protocol.test.mjs test/protocol.e2e.test.mjs test/comparison.test.mjs test/milestone4.test.mjs",
     "test": "npm run check && npm run test:unit && npm run doctor",
     "audit": "npm audit --audit-level=high"
   },

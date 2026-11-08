@@ -14,8 +14,14 @@ import {
     resolveToolName, validateConsultArgs, readBridgeVersion,
     detectRuleState, installRule, uninstallRule
 } from "./protocol.mjs";
+import { SessionAuthManager } from "./session-auth.mjs";
+import { ResponseBufferManager, JOB_STATUS } from "./response-buffer.mjs";
 
 const BRIDGE_VERSION = readBridgeVersion(import.meta.url);
+
+const authManager = new SessionAuthManager();
+const responseBuffer = new ResponseBufferManager();
+const PORT = authManager.port;
 
 // Security: accept connections only from this machine and only from supported AI sites.
 const ALLOWED_ORIGINS = new Set([
@@ -26,8 +32,6 @@ const ALLOWED_ORIGINS = new Set([
     "https://chat.openai.com",
     "https://chat.deepseek.com"
 ]);
-
-const PORT = parseInt(process.env.BRIDGE_PORT || "4545", 10);
 let wss = null;
 
 const isMainModule = () => {
@@ -69,6 +73,7 @@ function setupHeartbeat(ws) {
 
 function setupProcessLifecycle(transport) {
     const cleanupAndExit = () => {
+        authManager.cleanupSessionFile();
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         if (browserSocket) {
             try { browserSocket.close(); } catch (e) {}
@@ -84,6 +89,7 @@ function setupProcessLifecycle(transport) {
     }
     process.on("SIGINT", cleanupAndExit);
     process.on("SIGTERM", cleanupAndExit);
+    process.on("exit", () => authManager.cleanupSessionFile());
     if (typeof process.disconnect === "function") {
         process.on("disconnect", cleanupAndExit);
     }
@@ -188,12 +194,14 @@ function resolveSafeFile(projectRoot, filePath) {
 let sessionState = {
     initializedProjects: new Set(),
     sentFileHashes: new Map(),
-    lastChatKey: null
+    lastChatKey: null,
+    lastCompletedReply: null
 };
 
 function resetSessionMemory() {
     sessionState.initializedProjects.clear();
     sessionState.sentFileHashes.clear();
+    sessionState.lastCompletedReply = null;
 }
 
 function getHash(content) {
@@ -384,6 +392,44 @@ function withTabLock(task) {
     return run;
 }
 
+function formatConsultResolution(resolution, envelopeMeta = null) {
+    if (resolution.status === "completed") {
+        const replyText = resolution.text;
+        const failure = classifyTabFailure(replyText);
+        if (failure) {
+            // The Web AI never received the briefing: force a full resend on the next call.
+            resetSessionMemory();
+            return bridgeError(failure, replyText);
+        }
+        let fullResponse;
+        if (envelopeMeta) {
+            const envelope = buildEnvelope(envelopeMeta);
+            fullResponse = envelope + replyText;
+        } else if (!replyText.startsWith("[orchestrator ")) {
+            const envelope = `[orchestrator protocol=1 provider=${resolution.provider || "unknown"} status=ok]\n\n`;
+            fullResponse = envelope + replyText;
+        } else {
+            fullResponse = replyText;
+        }
+        sessionState.lastCompletedReply = fullResponse;
+        return { content: [{ type: "text", text: fullResponse }] };
+    }
+
+    if (resolution.status === "partial_streaming") {
+        const header = `[orchestrator protocol=1 provider=${resolution.provider || "unknown"} status=partial_streaming jobId=${resolution.jobId}]\n\n`;
+        const body = (resolution.partialText || "") + `\n\n[anti-timeout note] ${resolution.resumeInstruction}`;
+        return { content: [{ type: "text", text: header + body }] };
+    }
+
+    if (resolution.status === "failed") {
+        resetSessionMemory();
+        const code = codeFromError(resolution.error);
+        return bridgeError(code, resolution.error?.message || "Job execution failed");
+    }
+
+    return bridgeError("BAD_REQUEST", resolution.error?.message || `Job "${resolution.jobId}" not found`);
+}
+
 function handleConsultRequest(args) {
     return withTabLock(() => handleConsultRequestUnlocked(args));
 }
@@ -391,6 +437,13 @@ function handleConsultRequest(args) {
 async function handleConsultRequestUnlocked(args) {
     const invalid = validateConsultArgs(args);
     if (invalid) return bridgeError("BAD_REQUEST", invalid);
+
+    // If args.jobId is provided, directly poll/resume without dispatching a new prompt
+    if (args.jobId) {
+        const resolution = await responseBuffer.waitForWindowOrCompletion(args.jobId, { softTimeoutMs: args.softTimeoutMs });
+        return formatConsultResolution(resolution);
+    }
+
     if (!browserSocket || browserSocket.readyState !== 1) {
         return bridgeError("NO_TAB", "No browser tab is currently connected.");
     }
@@ -403,7 +456,18 @@ async function handleConsultRequestUnlocked(args) {
         response_type: responseType = "code_changes"
     } = args;
 
-    let chatInfo = { isEmptyChat: true, chatKey: "unknown" };
+    if (task === "get_last_response" || task === "last_response") {
+        if (sessionState.lastCompletedReply) {
+            return { content: [{ type: "text", text: sessionState.lastCompletedReply }] };
+        }
+        try {
+            const check = await callBrowserTab("check_session", {}, 5000);
+            const full = check?.domDiagnostic?.lastResponseFull || check?.domDiagnostic?.lastResponseSnippet || "";
+            if (full) return { content: [{ type: "text", text: full }] };
+        } catch (e) {}
+    }
+
+    let chatInfo = { isEmptyChat: true, chatKey: "unknown", provider: "unknown" };
     try {
         const info = await callBrowserTab("check_session", {}, 10000);
         if (info) chatInfo = info;
@@ -506,33 +570,78 @@ async function handleConsultRequestUnlocked(args) {
     promptText += `=== CURRENT TASK TO EXECUTE ===\n${task}\n\n`;
     promptText += buildOrchestratorFooter(responseType);
 
-    try {
-        const reply = await callBrowserTab("prompt", {
+    const { job, deduplicated } = responseBuffer.createOrAttachJob({
+        prompt: promptText,
+        provider: chatInfo.provider || "unknown",
+        files: attachments
+    });
+
+    if (!deduplicated) {
+        const promptPayload = {
+            id: job.jobId,
+            requestId: job.jobId,
+            jobId: job.jobId,
+            type: "prompt",
+            taskType: "EXECUTE_PROMPT",
             prompt: promptText,
-            attachments
-        }, 660000);
-        const replyText = typeof reply === "string" ? reply : (reply.reply || JSON.stringify(reply));
-        const failure = classifyTabFailure(replyText);
-        if (failure) {
-            // The Web AI never received the briefing: force a full resend on the next call.
-            resetSessionMemory();
-            return bridgeError(failure, replyText);
-        }
-        const envelope = buildEnvelope({
+            files: attachments,
+            attachments,
+            payload: { prompt: promptText, attachments }
+        };
+        browserSocket.send(JSON.stringify(promptPayload));
+    }
+
+    try {
+        const resolution = await responseBuffer.waitForWindowOrCompletion(job.jobId, { softTimeoutMs: args.softTimeoutMs });
+        return formatConsultResolution(resolution, {
             provider: chatInfo.provider,
             responseType,
             filesSent: sentFiles,
             filesUnchanged: unchangedFiles,
             refused
         });
-        return { content: [{ type: "text", text: envelope + replyText }] };
     } catch (err) {
         resetSessionMemory();
         return bridgeError(codeFromError(err), err.message);
     }
 }
 
-async function handleStatusRequest() {
+async function handleStatusRequest(args = {}) {
+    if (args && args.jobId) {
+        const job = responseBuffer.getJob(args.jobId);
+        if (!job) {
+            return {
+                content: [{
+                    type: "text",
+                    text: JSON.stringify({
+                        protocol_version: PROTOCOL_VERSION,
+                        bridge_version: BRIDGE_VERSION,
+                        connected: Boolean(browserSocket && browserSocket.readyState === 1),
+                        jobId: args.jobId,
+                        status: "not_found",
+                        error: `No job found with id ${args.jobId}`
+                    }, null, 2)
+                }]
+            };
+        }
+        return {
+            content: [{
+                type: "text",
+                text: JSON.stringify({
+                    protocol_version: PROTOCOL_VERSION,
+                    bridge_version: BRIDGE_VERSION,
+                    connected: Boolean(browserSocket && browserSocket.readyState === 1),
+                    jobId: job.jobId,
+                    status: job.status,
+                    capturedChars: (job.finalText ?? job.partialText).length,
+                    chunksEmitted: job.chunksEmitted,
+                    isThinking: job.isThinking,
+                    elapsedMs: (job.completedAt || Date.now()) - job.createdAt
+                }, null, 2)
+            }]
+        };
+    }
+
     if (!browserSocket || browserSocket.readyState !== 1) {
         return { content: [{ type: "text", text: JSON.stringify(buildStatus({ connected: false, port: PORT, version: BRIDGE_VERSION }), null, 2) }] };
     }
@@ -553,7 +662,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     if (tool.legacy) {
         console.error(`[Bridge] Tool '${name}' is deprecated; use '${tool.canonical}'.`);
     }
-    if (tool.kind === "status") return handleStatusRequest();
+    if (tool.kind === "status") return handleStatusRequest(args || {});
     return handleConsultRequest(args || {});
 });
 
@@ -574,7 +683,15 @@ function startServer() {
             host: "127.0.0.1",
             port: PORT,
             maxPayload: 100 * 1024 * 1024, // 100MB max payload for large multi-file attachments
-            verifyClient: (info) => ALLOWED_ORIGINS.has(info.origin)
+            verifyClient: (info, cb) => {
+                const res = authManager.verifyUpgradeRequest(info.req);
+                info.req._tokenVerifiedOnUpgrade = res.tokenVerified;
+                if (typeof cb === "function") {
+                    cb(res.ok, res.ok ? 200 : 403, res.reason);
+                } else {
+                    return res.ok;
+                }
+            }
         });
 
         wss.on("error", (err) => {
@@ -591,7 +708,10 @@ function startServer() {
             }
         });
 
-        wss.on("connection", (ws) => {
+        wss.on("connection", (ws, req) => {
+            if (req && req._tokenVerifiedOnUpgrade) {
+                ws._tokenVerifiedOnUpgrade = true;
+            }
             if (browserSocket && browserSocket.readyState === 1) {
                 try {
                     browserSocket.send(JSON.stringify({ type: "replaced" }));
@@ -600,15 +720,70 @@ function startServer() {
             }
             browserSocket = ws;
             setupHeartbeat(ws);
+
+            ws.on("message", (raw) => {
+                let msg;
+                try {
+                    msg = JSON.parse(raw.toString());
+                } catch (e) {
+                    return;
+                }
+                if (!authManager.validateMessageAuth(ws, msg)) {
+                    try {
+                        ws.send(JSON.stringify({ type: "ERROR", code: "ERR_UNAUTHORIZED", message: "Unauthorized WebSocket message" }));
+                    } catch (_) {}
+                    return;
+                }
+                if (msg.type === "AUTH_HELLO") {
+                    const res = authManager.authenticateConnection(ws, msg);
+                    if (res.ok) {
+                        try {
+                            ws.send(JSON.stringify({ type: "AUTH_OK", sessionSecret: res.sessionSecret }));
+                        } catch (_) {}
+                    } else {
+                        try {
+                            ws.send(JSON.stringify({ type: "ERROR", code: res.code, message: res.reason }));
+                        } catch (_) {}
+                    }
+                    return;
+                }
+                if (msg.type === "STREAM_CHUNK") {
+                    responseBuffer.ingestStreamChunk(msg);
+                    return;
+                }
+                if (msg.type === "RESPONSE_COMPLETE") {
+                    responseBuffer.completeJob(msg.jobId || msg.requestId || msg.id, msg.text || msg.response, msg);
+                    return;
+                }
+                if (msg.type === "ERROR") {
+                    responseBuffer.failJob(msg.jobId || msg.requestId || msg.id, msg);
+                    return;
+                }
+                // Backwards compatibility with test runners and legacy content script:
+                if (msg.id && (msg.type === "prompt" || msg.reply !== undefined || msg.payload?.reply !== undefined)) {
+                    const replyContent = msg.payload !== undefined && msg.payload.reply !== undefined
+                        ? msg.payload.reply
+                        : (msg.reply !== undefined ? msg.reply : msg.payload);
+                    responseBuffer.completeJob(msg.id, typeof replyContent === "string" ? replyContent : JSON.stringify(replyContent), msg);
+                }
+            });
+
             ws.on("close", () => {
+                authManager.revokeConnection(ws);
                 if (browserSocket === ws) {
                     browserSocket = null;
+                }
+                for (const [jId, j] of responseBuffer.jobs.entries()) {
+                    if (j.status === JOB_STATUS.PENDING || j.status === JOB_STATUS.STREAMING) {
+                        responseBuffer.failJob(jId, codedError("TAB_DISCONNECTED", "Browser tab disconnected before completing the request."));
+                    }
                 }
             });
             resetSessionMemory();
         });
     }
 
+    authManager.persistSessionFile();
     initWebSocket(1);
 
     const transport = new StdioServerTransport();
@@ -662,5 +837,7 @@ export {
     resolveSafeFile,
     isSensitiveRelPath,
     parseListeningPid,
-    withTabLock
+    withTabLock,
+    authManager,
+    responseBuffer
 };

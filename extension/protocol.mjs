@@ -11,6 +11,15 @@ export const LEGACY_STATUS_TOOL = "get_bridge_status";
 
 export const RESPONSE_TYPES = ["code_changes", "analysis"];
 
+export const WS_INCOMING_MESSAGE_TYPES = Object.freeze([
+    "AUTH_HELLO",
+    "STREAM_CHUNK",
+    "UPLOAD_PROGRESS",
+    "PROMPT_DISPATCHED",
+    "RESPONSE_COMPLETE",
+    "HEARTBEAT"
+]);
+
 /**
  * Single source of truth for the Agent <-> Orchestrator protocol.
  * Served as MCP `instructions` AND mirrored (opt-in) into ~/.gemini/GEMINI.md.
@@ -152,9 +161,31 @@ const consultSchema = {
             type: "string",
             enum: RESPONSE_TYPES,
             description: "\"code_changes\" (default): expect complete modified files. \"analysis\": expect prose only (questions, reviews, plans)."
+        },
+        jobId: {
+            type: "string",
+            description: "Optional jobId returned by a previous partial_streaming response to poll/resume a long-running generation without restarting it."
+        },
+        softTimeoutMs: {
+            type: "number",
+            description: "Optional soft deadline in milliseconds before returning partial_streaming (default: 145000)."
         }
     },
     required: ["projectRoot", "conversation_history_and_context", "task", "filePaths"]
+};
+
+const statusSchema = {
+    type: "object",
+    properties: {
+        jobId: {
+            type: "string",
+            description: "Optional jobId returned by a previous partial_streaming response to poll/resume a long-running generation without restarting it."
+        },
+        softTimeoutMs: {
+            type: "number",
+            description: "Optional soft deadline in milliseconds before returning partial_streaming (default: 145000)."
+        }
+    }
 };
 
 const CONSULT_DESCRIPTION =
@@ -172,13 +203,13 @@ const STATUS_DESCRIPTION =
 export function getToolDefinitions({ includeLegacy = true } = {}) {
     const tools = [
         { name: TOOL_CONSULT, description: CONSULT_DESCRIPTION, inputSchema: consultSchema },
-        { name: TOOL_STATUS, description: STATUS_DESCRIPTION, inputSchema: { type: "object", properties: {} } }
+        { name: TOOL_STATUS, description: STATUS_DESCRIPTION, inputSchema: statusSchema }
     ];
     if (includeLegacy) {
         for (const name of LEGACY_CONSULT_TOOLS) {
             tools.push({ name, description: `Deprecated alias of ${TOOL_CONSULT} (identical behaviour). Use ${TOOL_CONSULT}.`, inputSchema: consultSchema });
         }
-        tools.push({ name: LEGACY_STATUS_TOOL, description: `Deprecated alias of ${TOOL_STATUS}. Use ${TOOL_STATUS}.`, inputSchema: { type: "object", properties: {} } });
+        tools.push({ name: LEGACY_STATUS_TOOL, description: `Deprecated alias of ${TOOL_STATUS}. Use ${TOOL_STATUS}.`, inputSchema: statusSchema });
     }
     return tools;
 }
@@ -201,6 +232,9 @@ export function validateConsultArgs(args = {}) {
     let st;
     try { st = fs.statSync(args.projectRoot); } catch (e) { return "projectRoot does not exist."; }
     if (!st.isDirectory()) return "projectRoot must be a directory.";
+    if (args.jobId && typeof args.jobId === "string" && args.jobId.trim().length > 0) {
+        return null;
+    }
     if (typeof args.task !== "string" || args.task.trim() === "") return "task is required.";
     if (args.filePaths !== undefined && !Array.isArray(args.filePaths)) return "filePaths must be an array of strings.";
     if (args.response_type !== undefined && !RESPONSE_TYPES.includes(args.response_type)) {
