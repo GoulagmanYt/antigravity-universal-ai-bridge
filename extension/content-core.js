@@ -114,25 +114,64 @@
         inputEl.value = promptText;
       }
 
-      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-      inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+      inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
       return;
     }
 
-    // Contenteditable element (Quill / ProseMirror / Lexical)
-    if (typeof document !== 'undefined' && typeof document.execCommand === 'function') {
-      const selection = window.getSelection ? window.getSelection() : null;
-      if (selection && document.createRange) {
-        const range = document.createRange();
-        range.selectNodeContents(inputEl);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
-      const inserted = document.execCommand('insertText', false, promptText);
-      if (inserted && (inputEl.textContent || '').trim().length > 0) {
-        inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, data: promptText, inputType: 'insertText' }));
+    // Modern ProseMirror direct access (ChatGPT / Claude)
+    try {
+      const pmView = inputEl.pmViewDesc?.view || inputEl.__vue__?.editorView;
+      if (pmView && pmView.state && pmView.dispatch) {
+        const { state, dispatch } = pmView;
+        const tr = state.tr.replaceWith(0, state.doc.content.size, state.schema.text(promptText));
+        dispatch(tr);
+        inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
         return;
       }
+    } catch (_) {}
+
+    // Synthetic ClipboardEvent('paste') with DataTransfer (ProseMirror & Lexical native handling)
+    let pasted = false;
+    try {
+      if (typeof DataTransfer === 'function' && typeof ClipboardEvent === 'function') {
+        const dt = new DataTransfer();
+        dt.setData('text/plain', promptText);
+        const pasteEvent = new ClipboardEvent('paste', {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          clipboardData: dt
+        });
+        Object.defineProperty(pasteEvent, 'clipboardData', { value: dt });
+        inputEl.dispatchEvent(pasteEvent);
+        if ((inputEl.textContent || inputEl.innerText || '').trim().length > 0) {
+          pasted = true;
+        }
+      }
+    } catch (_) {}
+
+    if (pasted) {
+      inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      return;
+    }
+
+    // Fallback: execCommand with Selection
+    if (typeof document !== 'undefined' && typeof document.execCommand === 'function') {
+      try {
+        const selection = window.getSelection ? window.getSelection() : null;
+        if (selection && document.createRange) {
+          const range = document.createRange();
+          range.selectNodeContents(inputEl);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        const inserted = document.execCommand('insertText', false, promptText);
+        if (inserted && (inputEl.textContent || '').trim().length > 0) {
+          inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: promptText, inputType: 'insertText' }));
+          return;
+        }
+      } catch (_) {}
     }
 
     // Fallback paragraph population for ProseMirror / Quill
@@ -143,13 +182,15 @@
       p.textContent = line || '\u200B';
       inputEl.appendChild(p);
     }
-    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
   }
 
   /**
    * Triggers prompt submission via the provider's send button or Enter key event.
+   * Dispatches pointerdown, mousedown, mouseup, click, and keyboard Enter for maximum SPA compatibility.
    * @param {object} provider
    * @param {Element} inputEl
+   * @param {object} [options]
    * @returns {Promise<string>} Method used ('button_click' | 'enter_key')
    */
   async function triggerSend(provider, inputEl, options = {}) {
@@ -168,25 +209,49 @@
       await sleep(150);
     }
 
+    await sleep(200);
+
+    let sent = false;
     if (sendBtn && typeof sendBtn.click === 'function') {
-      sendBtn.click();
-      return 'button_click';
+      try {
+        if (typeof PointerEvent === 'function') {
+          sendBtn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, composed: true }));
+        }
+        sendBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, composed: true }));
+        if (typeof PointerEvent === 'function') {
+          sendBtn.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, composed: true }));
+        }
+        sendBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, composed: true }));
+        sendBtn.click();
+        sent = true;
+      } catch (_) {}
     }
 
     if (inputEl && typeof KeyboardEvent === 'function') {
-      const enterDown = new KeyboardEvent('keydown', {
-        key: 'Enter',
-        code: 'Enter',
-        keyCode: 13,
-        which: 13,
-        bubbles: true,
-        cancelable: true,
-        composed: true
-      });
-      inputEl.dispatchEvent(enterDown);
-      return 'enter_key';
+      try {
+        inputEl.dispatchEvent(new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+          cancelable: true,
+          composed: true
+        }));
+        inputEl.dispatchEvent(new KeyboardEvent('keyup', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+          cancelable: true,
+          composed: true
+        }));
+        sent = true;
+      } catch (_) {}
     }
 
+    if (sent) return 'button_and_enter';
     throw new Error(`Could not locate send trigger for provider "${provider ? provider.id : 'unknown'}"`);
   }
 
