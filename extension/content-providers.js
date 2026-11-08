@@ -170,11 +170,23 @@
       ],
       sendButtonSelectors: [
         'button.send-button[aria-label]',
+        'button.send-button',
         'button[aria-label*="Send message" i]',
+        'button[aria-label*="Send prompt" i]',
+        'button[aria-label*="Send" i]',
         'button[aria-label*="Envoyer" i]',
+        'button[aria-label*="Soumettre" i]',
+        'button[aria-label*="Enviar" i]',
+        'button[aria-label*="Senden" i]',
         'button[data-test-id="send-button"]',
+        'button[data-testid="send-button"]',
         'button[mattooltip*="Send" i]',
-        'button[mattooltip*="Envoyer" i]'
+        'button[mattooltip*="Envoyer" i]',
+        'button[mattooltip*="Enviar" i]',
+        'button[mattooltip*="Senden" i]',
+        '.send-button-container button',
+        'button:has(mat-icon[fonticon*="send"])',
+        'button:has(span.mat-mdc-button-touch-target)'
       ],
       stopButtonSelectors: [
         'button[aria-label*="Stop response" i]',
@@ -238,7 +250,35 @@
         '.response-footer',
         'sources-carousel',
         'tts-control'
-      ]
+      ],
+      customResolver: {
+        findSendButton(inputEl) {
+          if (typeof document === 'undefined') return null;
+          const container = inputEl
+            ? (inputEl.closest('.input-area-container') ||
+               inputEl.closest('.chat-input-container') ||
+               inputEl.closest('rich-textarea')?.parentElement ||
+               inputEl.closest('form') ||
+               inputEl.closest('[role="region"]'))
+            : null;
+          const searchRoot = container || document;
+          const btns = Array.from(searchRoot.querySelectorAll('button, div[role="button"]'));
+          const sendPattern = /(send|envoyer|enviar|senden|soumettre)/i;
+          for (let i = btns.length - 1; i >= 0; i--) {
+            const btn = btns[i];
+            const aria = (btn.getAttribute('aria-label') || btn.getAttribute('mattooltip') || btn.getAttribute('title') || '').toLowerCase();
+            if (sendPattern.test(aria)) {
+              return btn;
+            }
+            if (btn.classList.contains('send-button') || btn.querySelector('.send-button-icon, mat-icon[fonticon*="send"], svg path')) {
+              if (!/(microphone|micro|upload|fichier|attach|stop|arrê)/i.test(aria)) {
+                return btn;
+              }
+            }
+          }
+          return null;
+        }
+      }
     },
 
     claude: {

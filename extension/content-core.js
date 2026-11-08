@@ -160,6 +160,27 @@
       }
     } catch (_) {}
 
+    // Direct Quill & rich-textarea instance access (Google Gemini)
+    try {
+      const rich = inputEl.closest ? inputEl.closest('rich-textarea') : null;
+      const quill = inputEl.__quill ||
+                    inputEl.parentElement?.__quill ||
+                    rich?.__quill ||
+                    rich?.quill ||
+                    (typeof window !== 'undefined' && window.Quill?.find?.(inputEl));
+      if (quill && typeof quill.setText === 'function') {
+        quill.setText(promptText);
+        if (typeof quill.update === 'function') quill.update();
+        inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+        if (rich) {
+          rich.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+          rich.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+        }
+        return;
+      }
+    } catch (_) {}
+
     // Synthetic ClipboardEvent('paste') with DataTransfer (ProseMirror & Lexical native handling)
     let pasted = false;
     try {
@@ -188,6 +209,7 @@
     // Fallback: execCommand with Selection
     if (typeof document !== 'undefined' && typeof document.execCommand === 'function') {
       try {
+        if (typeof inputEl.focus === 'function') inputEl.focus();
         const selection = window.getSelection ? window.getSelection() : null;
         if (selection && document.createRange) {
           const range = document.createRange();
@@ -196,8 +218,15 @@
           selection.addRange(range);
         }
         const inserted = document.execCommand('insertText', false, promptText);
-        if (inserted && (inputEl.textContent || '').trim().length > 0) {
+        if (inserted && (inputEl.textContent || inputEl.innerText || '').trim().length > 0) {
           inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, data: promptText, inputType: 'insertText' }));
+          inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+          inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+          const rich = inputEl.closest ? inputEl.closest('rich-textarea') : null;
+          if (rich) {
+            rich.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+            rich.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+          }
           return;
         }
       } catch (_) {}
@@ -237,20 +266,38 @@
    * @returns {Promise<string>} Method used ('button_click' | 'enter_key')
    */
   async function triggerSend(provider, inputEl, options = {}) {
-    const maxWaitMs = options.hasFiles ? 15000 : 2500;
+    const maxWaitMs = options.hasFiles ? 15000 : 6000;
     const deadline = Date.now() + maxWaitMs;
 
     let sendBtn = null;
+    let anyCandidate = null;
     while (Date.now() < deadline) {
       const candidate = Providers.findSendButton(provider, inputEl);
-      if (candidate && !isButtonDisabled(candidate)) {
-        const style = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(candidate) : null;
-        if (!style || (style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0.2)) {
-          sendBtn = candidate;
-          break;
+      if (candidate) {
+        anyCandidate = candidate;
+        if (!isButtonDisabled(candidate)) {
+          const style = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(candidate) : null;
+          if (!style || (style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0.2)) {
+            sendBtn = candidate;
+            break;
+          }
         }
       }
       await sleep(150);
+    }
+
+    // Follow-up fallback: If candidate exists but aria-disabled is lingering, and the input has content, force enable & click!
+    if (!sendBtn && anyCandidate) {
+      const hasContent = (inputEl && (inputEl.value || inputEl.textContent || inputEl.innerText || '').trim().length > 0);
+      if (hasContent) {
+        try {
+          anyCandidate.removeAttribute('disabled');
+          anyCandidate.removeAttribute('aria-disabled');
+          anyCandidate.setAttribute('aria-disabled', 'false');
+          anyCandidate.classList.remove('disabled');
+        } catch (_) {}
+        sendBtn = anyCandidate;
+      }
     }
 
     await sleep(250);
