@@ -312,7 +312,7 @@
 
     await sleep(250);
 
-    let sent = false;
+    let sendMethod = null;
     if (sendBtn && typeof sendBtn.click === 'function') {
       try {
         const evtView = typeof window !== 'undefined' ? window : null;
@@ -329,17 +329,12 @@
         sendBtn.dispatchEvent(new MouseEvent('mouseup', mouseOpts));
         sendBtn.click();
 
-        // Also trigger on SVG / path / icon child in case framework attaches listener internally
-        const iconChild = sendBtn.querySelector('svg, path, div[class*="icon"], div[class*="background"], mat-icon, span.lumi-symbols');
-        if (iconChild && typeof iconChild.dispatchEvent === 'function') {
-          iconChild.dispatchEvent(new MouseEvent('click', mouseOpts));
-        }
-
-        sent = true;
+        sendMethod = 'button_click';
       } catch (_) {}
     }
 
-    if (inputEl && typeof KeyboardEvent === 'function') {
+    // Only fallback to Enter key if no send button was located or clicked (avoids double submission)
+    if (!sendMethod && inputEl && typeof KeyboardEvent === 'function') {
       try {
         if (typeof inputEl.focus === 'function') inputEl.focus();
         const keyOpts = {
@@ -354,11 +349,11 @@
         inputEl.dispatchEvent(new KeyboardEvent('keydown', keyOpts));
         inputEl.dispatchEvent(new KeyboardEvent('keypress', keyOpts));
         inputEl.dispatchEvent(new KeyboardEvent('keyup', keyOpts));
-        sent = true;
+        sendMethod = 'enter_key';
       } catch (_) {}
     }
 
-    if (sent) return 'button_and_enter';
+    if (sendMethod) return sendMethod;
     throw new Error(`Could not locate send trigger for provider "${provider ? provider.id : 'unknown'}"`);
   }
 
