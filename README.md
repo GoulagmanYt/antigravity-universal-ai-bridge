@@ -42,6 +42,7 @@ flowchart LR
 | | |
 |---|---|
 | **Universal support** | Gemini, Google AI Studio, Claude, ChatGPT and DeepSeek. Switch the active "Architect" with one click. |
+| **Native File Upload** | Attaches project and workspace files as native attachments via browser `DataTransfer`/`File` APIs and paste events, eliminating DOM textarea lag and preventing destructive file truncation. |
 | **Draggable & Persistent** | Draggable status badge that remembers its position and dedication state across page refreshes. |
 | **Delta & Token Budgeting** | Full context is budgeted (max 60k chars) with Git awareness. Follow-ups only send what changed. |
 | **Context discovery** | Finds files like `STATE.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `REQUIREMENTS.md`, `.cursorrules` + Git branch/status. |
