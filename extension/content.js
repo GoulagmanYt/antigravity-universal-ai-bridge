@@ -57,13 +57,13 @@ const PROVIDERS = {
     },
     "chat.deepseek.com": {
         name: "DeepSeek",
-        input: 'textarea#chat-input, textarea',
-        sendBtn: 'div[role="button"][aria-disabled="false"], button[type="submit"], button.ds-icon-button',
+        input: 'textarea[name="search"], textarea._27c9245, textarea[placeholder*="DeepSeek" i], textarea#chat-input',
+        sendBtn: '.ec4f5d61 ._52c986b, div[role="button"]._52c986b, ._52c986b, .ec4f5d61 div[role="button"].ds-button--primary',
         response: '.ds-markdown',
-        stopBtn: 'button[aria-label*="Stop"], .ds-icon-button[aria-label*="Stop"], div[role="button"][aria-label*="Stop"]',
-        attachmentBtn: 'button[aria-label*="Upload" i], button[aria-label*="Attach" i]',
-        fileInput: 'input[type="file"]',
-        attachmentChip: '.ds-file-card, [class*="file-item"], [class*="attachment"]',
+        stopBtn: '.ec4f5d61 [aria-label*="Stop" i], button[aria-label*="Stop" i], .ds-icon-button[aria-label*="Stop" i]',
+        attachmentBtn: '.bf38813a div[role="button"], .bf38813a .f02f0e25, .bf38813a [class*="f02f0e25"]',
+        fileInput: '.bf38813a input[type="file"], input[type="file"][multiple], input[type="file"]',
+        attachmentChip: '._6d1b417 .ds-animated-size-item, ._6d1b417 ._25c7358, ._25c7358.dafb6286, .cd314545, .ds-animated-size-item',
         maxFilesPerTurn: 10
     }
 };
