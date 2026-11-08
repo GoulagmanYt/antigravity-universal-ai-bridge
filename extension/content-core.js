@@ -130,20 +130,25 @@
         } else {
           inputEl.value = promptText;
         }
+      }
 
-        if (typeof InputEvent === 'function') {
-          try {
-            inputEl.dispatchEvent(new InputEvent('input', {
-              bubbles: true,
-              cancelable: true,
-              composed: true,
-              inputType: 'insertText',
-              data: promptText
-            }));
-          } catch (_) {}
-        }
-        inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-        inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+      if (typeof InputEvent === 'function') {
+        try {
+          inputEl.dispatchEvent(new InputEvent('input', {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            inputType: 'insertText',
+            data: promptText
+          }));
+        } catch (_) {}
+      }
+      inputEl.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      inputEl.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+      const parentArea = inputEl.closest ? inputEl.closest('.input-area-container, .initial-input-area-container, .initial-input-area, rich-textarea') : null;
+      if (parentArea) {
+        parentArea.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+        parentArea.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
       }
       return;
     }
@@ -295,6 +300,11 @@
           anyCandidate.removeAttribute('aria-disabled');
           anyCandidate.setAttribute('aria-disabled', 'false');
           anyCandidate.classList.remove('disabled');
+          if (anyCandidate.style) {
+            anyCandidate.style.display = 'inline-flex';
+            anyCandidate.style.visibility = 'visible';
+            anyCandidate.style.opacity = '1';
+          }
         } catch (_) {}
         sendBtn = anyCandidate;
       }
@@ -320,7 +330,7 @@
         sendBtn.click();
 
         // Also trigger on SVG / path / icon child in case framework attaches listener internally
-        const iconChild = sendBtn.querySelector('svg, path, div[class*="icon"], div[class*="background"]');
+        const iconChild = sendBtn.querySelector('svg, path, div[class*="icon"], div[class*="background"], mat-icon, span.lumi-symbols');
         if (iconChild && typeof iconChild.dispatchEvent === 'function') {
           iconChild.dispatchEvent(new MouseEvent('click', mouseOpts));
         }

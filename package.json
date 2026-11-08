@@ -1,6 +1,6 @@
 {
   "name": "webai-bridge",
-  "version": "2.4.0-alpha.2",
+  "version": "2.4.0",
   "description": "Zero-Token MCP Orchestrator. Let your IDE agent delegate the hard thinking to the Web AI you already pay for (Claude, Gemini, ChatGPT, DeepSeek, AI Studio) with $0 API cost, native file uploads, and zero copy-paste.",
   "private": true,
   "type": "commonjs",

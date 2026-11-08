@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const ProvidersMod = require("../extension/content-providers.js");
 import EventEmitter from "node:events";
 
 import {
@@ -256,4 +259,51 @@ test("Comparison 9: DOM Input Fallback Strategy", () => {
     assert.ok(mockEditor.eventsDispatched.includes("input"), "Input event must be dispatched to notify reactive UI");
 });
 
+test("Comparison 10: Gemini Follow-Up DOM Resolution (.send-icon and composer isolation)", () => {
+    const gemini = ProvidersMod.PROVIDERS.gemini;
+    assert.ok(gemini, "Gemini provider must be defined");
+    assert.equal(typeof gemini.customResolver.findSendButton, "function", "Gemini customResolver.findSendButton must be a function");
 
+    // Mock DOM elements
+    const mockMicBtn = {
+        tagName: "BUTTON",
+        classList: { contains: (cls) => cls === "speech-icon" },
+        getAttribute: (attr) => attr === "aria-label" ? "Utiliser le micro" : null,
+        querySelector: () => null
+    };
+
+    const mockSendIconBtn = {
+        tagName: "BUTTON",
+        classList: { contains: (cls) => cls === "send-icon" },
+        getAttribute: (attr) => attr === "aria-label" ? "Envoyer le message" : null,
+        closest: (sel) => sel.includes("button") ? mockSendIconBtn : null,
+        querySelector: () => null
+    };
+
+    const mockComposer = {
+        tagName: "DIV",
+        className: "initial-input-area-container",
+        querySelectorAll: (sel) => {
+            if (sel.includes("send-icon")) return [mockSendIconBtn];
+            if (sel.includes("button")) return [mockMicBtn, mockSendIconBtn];
+            return [];
+        },
+        querySelector: (sel) => {
+            if (sel.includes("send-icon")) return mockSendIconBtn;
+            return null;
+        }
+    };
+
+    const mockDoc = { body: {} };
+    const mockTextarea = {
+        tagName: "TEXTAREA",
+        value: "Test prompt follow up",
+        ownerDocument: mockDoc,
+        closest: (sel) => sel.includes("input-area-container") ? mockComposer : null,
+        parentElement: mockComposer,
+        nextElementSibling: mockSendIconBtn
+    };
+
+    const resolved = gemini.customResolver.findSendButton(mockTextarea);
+    assert.equal(resolved, mockSendIconBtn, "Must resolve the send icon button inside composer, not microphone");
+});

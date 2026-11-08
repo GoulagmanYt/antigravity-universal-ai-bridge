@@ -163,14 +163,34 @@
       inputSelectors: [
         'rich-textarea div.ql-editor[contenteditable="true"]',
         'div.ql-editor[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="true"][role="textbox"]',
         'div[contenteditable="true"][aria-label*="prompt" i]',
         'div[contenteditable="true"][aria-label*="message" i]',
-        'div[contenteditable="true"][role="textbox"]',
-        'textarea[aria-label*="prompt" i]'
+        'div[contenteditable="true"][aria-label*="question" i]',
+        '.input-area-container textarea',
+        '.initial-input-area-container textarea',
+        '.initial-input-area textarea',
+        'chat-window textarea',
+        'textarea[aria-label*="prompt" i]',
+        'textarea[aria-label*="message" i]',
+        'textarea[aria-label*="question" i]',
+        'textarea[placeholder*="Gemini" i]',
+        'textarea[placeholder*="prompt" i]',
+        'textarea[placeholder*="question" i]',
+        'div[contenteditable="true"]',
+        'textarea'
       ],
       sendButtonSelectors: [
+        '.input-area-container .send-icon',
+        '.initial-input-area-container .send-icon',
+        '.initial-input-area .send-icon',
+        'button.send-icon',
+        'div[role="button"].send-icon',
+        '.send-icon[role="button"]',
+        '.send-icon',
         'button.send-button[aria-label]',
         'button.send-button',
+        '.send-button-container button',
         'button[aria-label*="Send message" i]',
         'button[aria-label*="Send prompt" i]',
         'button[aria-label*="Send" i]',
@@ -184,9 +204,8 @@
         'button[mattooltip*="Envoyer" i]',
         'button[mattooltip*="Enviar" i]',
         'button[mattooltip*="Senden" i]',
-        '.send-button-container button',
         'button:has(mat-icon[fonticon*="send"])',
-        'button:has(span.mat-mdc-button-touch-target)'
+        'button:has(mat-icon[data-mat-icon-name="send"])'
       ],
       stopButtonSelectors: [
         'button[aria-label*="Stop response" i]',
@@ -253,29 +272,90 @@
       ],
       customResolver: {
         findSendButton(inputEl) {
-          if (typeof document === 'undefined') return null;
-          const container = inputEl
-            ? (inputEl.closest('.input-area-container') ||
-               inputEl.closest('.chat-input-container') ||
-               inputEl.closest('rich-textarea')?.parentElement ||
-               inputEl.closest('form') ||
-               inputEl.closest('[role="region"]'))
-            : null;
-          const searchRoot = container || document;
-          const btns = Array.from(searchRoot.querySelectorAll('button, div[role="button"]'));
-          const sendPattern = /(send|envoyer|enviar|senden|soumettre)/i;
-          for (let i = btns.length - 1; i >= 0; i--) {
-            const btn = btns[i];
-            const aria = (btn.getAttribute('aria-label') || btn.getAttribute('mattooltip') || btn.getAttribute('title') || '').toLowerCase();
-            if (sendPattern.test(aria)) {
-              return btn;
+          const doc = (inputEl && inputEl.ownerDocument) || (typeof document !== 'undefined' ? document : null);
+          if (!doc && !inputEl) return null;
+          let composerRoot = null;
+          if (inputEl) {
+            composerRoot =
+              inputEl.closest('.initial-input-area-container') ||
+              inputEl.closest('.initial-input-area') ||
+              inputEl.closest('.input-area-container') ||
+              inputEl.closest('.chat-input-container') ||
+              inputEl.closest('rich-textarea')?.parentElement ||
+              inputEl.closest('form') ||
+              inputEl.closest('[role="region"]') ||
+              inputEl.parentElement;
+
+            if (composerRoot && !composerRoot.querySelector('.send-icon, button, [role="button"]')) {
+              let cur = composerRoot.parentElement;
+              for (let i = 0; i < 10 && cur && cur !== document.body; i++) {
+                if (cur.querySelector('.send-icon, button.send-button, [aria-label*="Send" i], [aria-label*="Envoyer" i]')) {
+                  composerRoot = cur;
+                  break;
+                }
+                cur = cur.parentElement;
+              }
             }
-            if (btn.classList.contains('send-button') || btn.querySelector('.send-button-icon, mat-icon[fonticon*="send"], svg path')) {
-              if (!/(microphone|micro|upload|fichier|attach|stop|arrê)/i.test(aria)) {
+          }
+
+          const searchRoots = composerRoot ? (doc ? [composerRoot, doc] : [composerRoot]) : (doc ? [doc] : []);
+          const excludePattern = /(microphone|micro|vocal|speech|audio|upload|importer|fichier|attach|stop|arrê|pause|plus|menu|setting|paramètre)/i;
+          const sendPattern = /(send|envoyer|enviar|senden|soumettre)/i;
+
+          for (const root of searchRoots) {
+            // 1. Direct .send-icon match (high priority for Gemini Angular/SSR layouts)
+            const sendIcons = Array.from(root.querySelectorAll('.send-icon, [class*="send-icon"]'));
+            for (const icon of sendIcons) {
+              const clickTarget = icon.closest('button, [role="button"]') || icon;
+              const aria = (clickTarget.getAttribute('aria-label') || clickTarget.getAttribute('title') || '').toLowerCase();
+              if (!excludePattern.test(aria)) {
+                return clickTarget;
+              }
+            }
+
+            // 2. Next siblings check if inputEl is textarea
+            if (inputEl && inputEl.parentElement) {
+              let sib = inputEl.nextElementSibling;
+              while (sib) {
+                if (sib.matches && (sib.matches('.send-icon, [class*="send-icon"]') || sib.querySelector('.send-icon, [class*="send-icon"]'))) {
+                  const target = sib.matches('.send-icon, [class*="send-icon"]') ? (sib.closest('button, [role="button"]') || sib) : sib.querySelector('.send-icon, [class*="send-icon"]');
+                  const clickTarget = target.closest('button, [role="button"]') || target;
+                  const label = (clickTarget.getAttribute('aria-label') || clickTarget.getAttribute('title') || '').toLowerCase();
+                  if (!excludePattern.test(label)) {
+                    return clickTarget;
+                  }
+                }
+                sib = sib.nextElementSibling;
+              }
+            }
+
+            // 3. Inspect all buttons in composer container
+            const btns = Array.from(root.querySelectorAll('button, div[role="button"], span[role="button"]'));
+            for (let i = btns.length - 1; i >= 0; i--) {
+              const btn = btns[i];
+              const aria = (btn.getAttribute('aria-label') || btn.getAttribute('mattooltip') || btn.getAttribute('title') || '').toLowerCase();
+              if (excludePattern.test(aria)) continue;
+
+              if (sendPattern.test(aria)) {
+                return btn;
+              }
+
+              // Check for ligature icons: <mat-icon>send</mat-icon> or .lumi-symbols with 'send'
+              const iconEl = btn.querySelector('mat-icon, .lumi-symbols, [class*="icon"], svg');
+              if (iconEl) {
+                const text = (iconEl.textContent || '').trim().toLowerCase();
+                const fontIcon = (iconEl.getAttribute('fonticon') || iconEl.getAttribute('data-mat-icon-name') || '').toLowerCase();
+                if (text === 'send' || fontIcon.includes('send')) {
+                  return btn;
+                }
+              }
+
+              if (btn.classList.contains('send-button') || btn.classList.contains('send-icon') || btn.querySelector('.send-button-icon, .send-icon')) {
                 return btn;
               }
             }
           }
+
           return null;
         }
       }
@@ -644,10 +724,17 @@
    */
   function findSendButton(provider, inputEl) {
     if (!provider) return null;
+    const effectiveInput = inputEl || findInputElement(provider);
+    if (provider.customResolver && typeof provider.customResolver.findSendButton === 'function') {
+      const customBtn = provider.customResolver.findSendButton(effectiveInput);
+      if (customBtn && isVisibleElement(customBtn)) {
+        return customBtn;
+      }
+    }
     const direct = queryFirst(provider.sendButtonSelectors, { requireVisible: true });
     if (direct) return direct;
     if (provider.customResolver && typeof provider.customResolver.findSendButton === 'function') {
-      return provider.customResolver.findSendButton(inputEl || findInputElement(provider));
+      return provider.customResolver.findSendButton(effectiveInput);
     }
     return null;
   }
